@@ -94,9 +94,11 @@ export default function Home() {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('SSE received:', data); // Debug log
         
         if (data.status === 'done' && data.result) {
           // Final result received
+          console.log('Final result received:', data.result);
           setDomainResult(data.result);
           setProgress(null);
           setLoading(false);
@@ -107,7 +109,7 @@ export default function Home() {
           setProgress(data);
         }
       } catch (e) {
-        console.error('Failed to parse SSE data:', e);
+        console.error('Failed to parse SSE data:', e, 'Event data:', event.data);
       }
     };
 

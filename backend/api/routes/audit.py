@@ -137,11 +137,11 @@ async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
         )
         result = await orchestrator.audit_domain(domain_url)
         
-        # Store result (in production, save to database)
-        # For now, we'll keep it in progress tracker's internal state
-        progress = progress_tracker.get_progress(job_id)
-        if progress:
-            progress.result = result
+        # Store result in progress tracker
+        progress_tracker.update(
+            job_id,
+            result=result
+        )
         
         logger.info(f"Domain audit completed: {job_id}")
         
@@ -181,13 +181,22 @@ async def get_domain_progress(job_id: str):
                     progress = await asyncio.wait_for(queue.get(), timeout=0.5)
                     yield f"data: {progress.to_json()}\n\n"
                     
-                    # If completed or failed, send final message and close
+                    # If completed or failed, send final result and close
                     if progress.status in ["completed", "failed"]:
-                        # Include result if available
-                        if hasattr(progress, 'result'):
+                        # Wait a moment for result to be attached
+                        await asyncio.sleep(0.2)
+                        
+                        # Get fresh progress with result
+                        final_progress = progress_tracker.get_progress(job_id)
+                        if final_progress and final_progress.result:
                             import json
-                            yield f"data: {json.dumps({'status': 'done', 'result': progress.result})}\n\n"
-                        await asyncio.sleep(0.5)
+                            result_data = {
+                                'status': 'done',
+                                'result': final_progress.result
+                            }
+                            yield f"data: {json.dumps(result_data, default=str)}\n\n"
+                        
+                        await asyncio.sleep(0.3)
                         break
                         
                 except asyncio.TimeoutError:

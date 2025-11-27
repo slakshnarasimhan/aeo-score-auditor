@@ -21,13 +21,15 @@ class ProgressUpdate:
     percentage: float = 0.0
     message: str = ""
     timestamp: str = ""
-    result: Optional[Dict] = None  # Store final result
+    result: Optional[Any] = None  # Store final result
     
     def to_dict(self):
-        data = asdict(self)
-        # Don't include result in regular progress updates
-        if self.status not in ["completed", "failed"]:
-            data.pop('result', None)
+        data = {}
+        for key, value in asdict(self).items():
+            if key == 'result' and self.status not in ["completed", "failed"]:
+                # Don't include result in regular progress updates
+                continue
+            data[key] = value
         return data
     
     def to_json(self):
