@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies  
-COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Install Python dependencies (minimal for MVP - AI/ML optional)
+COPY requirements.minimal.txt requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Playwright is optional - install locally for JS-heavy sites
 # See ENABLE_PLAYWRIGHT.md for instructions
