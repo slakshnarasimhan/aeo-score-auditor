@@ -76,31 +76,60 @@ async def audit_page(request: PageAuditRequest, background_tasks: BackgroundTask
     }
 
 
-@router.post("/domain", response_model=AuditResponse)
-async def audit_domain(request: DomainAuditRequest):
+@router.post("/domain")
+async def audit_domain(request: DomainAuditRequest, background_tasks: BackgroundTasks):
     """
     Start a domain-wide AEO audit
+    
+    Crawls multiple pages from a domain and provides aggregated scores
     
     Args:
         request: Domain audit request
         
     Returns:
-        Job information
+        Aggregated domain audit results
     """
     logger.info(f"Received domain audit request for: {request.domain}")
     
     # Generate job ID
     job_id = f"job_domain_{uuid.uuid4().hex[:12]}"
     
-    # TODO: Implement domain crawling and auditing
+    # Ensure domain has scheme
+    domain_url = request.domain
+    if not domain_url.startswith('http'):
+        domain_url = f"https://{domain_url}"
     
-    return AuditResponse(
-        job_id=job_id,
-        status="queued",
-        url=f"https://{request.domain}",
-        estimated_completion=None,
-        status_url=f"/api/v1/jobs/{job_id}"
-    )
+    try:
+        # Import domain audit orchestrator
+        from crawler.domain_crawler import DomainAuditOrchestrator
+        
+        # Get max_pages from options or default to 10
+        max_pages = 10
+        if request.options and 'max_pages' in request.options:
+            max_pages = min(request.options['max_pages'], 50)  # Cap at 50 pages
+        
+        orchestrator = DomainAuditOrchestrator(max_pages=max_pages, max_concurrent=3)
+        result = await orchestrator.audit_domain(domain_url)
+        
+        return {
+            "job_id": job_id,
+            "status": "completed",
+            "domain": request.domain,
+            "status_url": f"/api/v1/jobs/{job_id}",
+            "result": result,
+            "completed_at": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Domain audit failed for {domain_url}: {e}")
+        return {
+            "job_id": job_id,
+            "status": "failed",
+            "domain": request.domain,
+            "status_url": f"/api/v1/jobs/{job_id}",
+            "error": str(e),
+            "completed_at": datetime.utcnow().isoformat()
+        }
 
 
 async def _execute_audit(url: str, options: AuditOptions) -> dict:
