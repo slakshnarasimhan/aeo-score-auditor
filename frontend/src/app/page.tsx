@@ -281,9 +281,18 @@ export default function Home() {
         <h1 className="text-5xl font-bold mb-2 text-center text-gray-900">
           AEO Score Auditor
         </h1>
-        <p className="text-center text-gray-600 mb-8">
+        <p className="text-center text-gray-600 mb-2">
           Answer Engine Optimization Analysis Tool
         </p>
+        <div className="text-center mb-8">
+          <a 
+            href="/scoring-guide.html" 
+            target="_blank"
+            className="text-blue-600 hover:text-blue-800 underline text-sm"
+          >
+            📊 View Complete Scoring Framework & Formulas →
+          </a>
+        </div>
 
         {/* Audit Type Selector */}
         <div className="flex justify-center mb-6 space-x-4">

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEO Scoring Framework - Complete Reference Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        h1 {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+            font-weight: 300;
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .nav a {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            text-decoration: none;
+            color: #333;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .nav a:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .overview {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+        
+        .overview h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .score-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .score-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .score-card .category {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .score-card .points {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .section {
+            margin-bottom: 50px;
+            scroll-margin-top: 100px;
+        }
+        
+        .section h2 {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .section h3 {
+            font-size: 1.5em;
+            color: #555;
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+        
+        .formula-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        
+        .formula-box code {
+            display: block;
+            white-space: pre-wrap;
+            font-size: 0.95em;
+        }
+        
+        .example-box {
+            background: #e8f4f8;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .example-box strong {
+            color: #1976D2;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .badge.excellent { background: #4CAF50; color: white; }
+        .badge.good { background: #8BC34A; color: white; }
+        .badge.fair { background: #FFC107; color: #333; }
+        .badge.poor { background: #F44336; color: white; }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .back-link:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; }
+            .nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 AEO Scoring Framework</h1>
+            <p class="subtitle">Complete Reference Guide - All Formulas & Calculations</p>
+        </div>
+        
+        <div class="nav">
+            <a href="#overview">Overview</a>
+            <a href="#answerability">Answerability</a>
+            <a href="#structured">Structured Data</a>
+            <a href="#authority">Authority</a>
+            <a href="#content">Content Quality</a>
+            <a href="#citation">Citation-ability</a>
+            <a href="#technical">Technical</a>
+            <a href="#final">Final Score</a>
+        </div>
+        
+        <div class="overview" id="overview">
+            <h2>📋 Scoring Framework Overview</h2>
+            <p>The AEO (Answer Engine Optimization) Score is a composite metric from <strong>0-100 points</strong> that evaluates how well a webpage is optimized for AI-powered answer engines like ChatGPT, Perplexity, and Google's AI Overview.</p>
+            
+            <p style="margin-top: 15px;"><strong>Total Score Breakdown:</strong></p>
+            <div class="score-summary">
+                <div class="score-card">
+                    <div class="category">Answerability</div>
+                    <div class="points">30 points</div>
+                </div>
+                <div class="score-card">
+                    <div class="category">Structured Data</div>
+                    <div class="points">20 points</div>
+                </div>
+                <div class="score-card">
+                    <div class="category">Authority</div>
+                    <div class="points">15 points</div>
+                </div>
+                <div class="score-card">
+                    <div class="category">Content Quality</div>
+                    <div class="points">10 points</div>
+                </div>
+                <div class="score-card">
+                    <div class="category">Citation-ability</div>
+                    <div class="points">10 points</div>
+                </div>
+                <div class="score-card">
+                    <div class="category">Technical</div>
+                    <div class="points">10 points</div>
+                </div>
+                <div class="score-card">
+                    <div class="category">AI Citation</div>
+                    <div class="points">5 points</div>
+                </div>
+            </div>
+            
+            <div class="formula-box" style="margin-top: 30px;">
+                <code><strong>Overall Score Formula:</strong>
+total_score = answerability + structured_data + authority + 
+              content_quality + citationability + technical + ai_citation
+
+Grade Assignment:
+  A+ : 90-100 points
+  A  : 80-89 points
+  B+ : 70-79 points
+  B  : 60-69 points
+  C  : 50-59 points
+  F  : 0-49 points</code>
+            </div>
+        </div>
+        
+        <!-- ANSWERABILITY SECTION -->
+        <div class="section" id="answerability">
+            <h2>1. Answerability <span class="badge excellent">30 Points</span></h2>
+            <p>Measures how well the page directly answers user queries in a consumable, AI-friendly format.</p>
+            
+            <h3>1.1 Direct Answer Presence <span style="font-size: 0.8em; color: #666;">(12 points)</span></h3>
+            <p>Detects if the page contains direct, concise answers to likely questions.</p>
+            
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+answer_blocks_found = count(answer_patterns)
+answer_score = min(12, answer_blocks_found × 2)
+
+<strong>Detection Method:</strong>
+- Extract answer patterns: TL;DR, callouts, definition boxes
+- Count unique answer blocks (excluding blockquotes)
+- Multiply by 2, cap at 12 points</code>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>Answer Blocks</th>
+                    <th>Score</th>
+                    <th>Rating</th>
+                </tr>
+                <tr>
+                    <td>0-1 blocks</td>
+                    <td>0-2 points</td>
+                    <td><span class="badge poor">Poor</span></td>
+                </tr>
+                <tr>
+                    <td>2-3 blocks</td>
+                    <td>4-6 points</td>
+                    <td><span class="badge fair">Fair</span></td>
+                </tr>
+                <tr>
+                    <td>4-5 blocks</td>
+                    <td>8-10 points</td>
+                    <td><span class="badge good">Good</span></td>
+                </tr>
+                <tr>
+                    <td>6+ blocks</td>
+                    <td>12 points</td>
+                    <td><span class="badge excellent">Excellent</span></td>
+                </tr>
+            </table>
+            
+            <div class="example-box">
+                <strong>Example:</strong> Page has 4 answer blocks → Score = min(12, 4 × 2) = <strong>8 points</strong>
+            </div>
+            
+            <h3>1.2 Question Coverage <span style="font-size: 0.8em; color: #666;">(8 points)</span></h3>
+            <p>Measures how many common user questions the page addresses.</p>
+            
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+questions_found = count(heading_questions + inline_questions)
+coverage_ratio = questions_found / 10
+question_score = min(8, coverage_ratio × 8)
+
+<strong>Detection Method:</strong>
+- Extract headings with "?" or question patterns
+- Count inline questions in content
+- Normalize to 10 questions baseline</code>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>Questions Found</th>
+                    <th>Score</th>
+                </tr>
+                <tr><td>0-2</td><td>0-2 points</td></tr>
+                <tr><td>3-5</td><td>3-5 points</td></tr>
+                <tr><td>6-8</td><td>6-7 points</td></tr>
+                <tr><td>9+</td><td>8 points</td></tr>
+            </table>
+            
+            <div class="example-box">
+                <strong>Example:</strong> Page has 7 questions → Coverage = 7/10 = 0.7 → Score = min(8, 0.7 × 8) = <strong>5.6 points</strong>
+            </div>
+            
+            <h3>1.3 Answer Conciseness <span style="font-size: 0.8em; color: #666;">(6 points)</span></h3>
+            <p>Evaluates if answers are presented in a scannable, AI-friendly format.</p>
+            
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+score = 0
+
+// TL;DR section (2 points)
+if has_tldr_section:
+    score += 2
+
+// Bullet lists (2 points)
+if list_count >= 3:
+    score += 2
+
+// Short paragraphs (2 points)
+avg_paragraph_words = sum(paragraph_words) / paragraph_count
+if avg_paragraph_words <= 100:
+    score += 2
+
+conciseness_score = score (max 6)</code>
+            </div>
+            
+            <div class="example-box">
+                <strong>Example:</strong> Page has TL;DR (2pts) + 4 lists (2pts) + short paragraphs (2pts) = <strong>6 points</strong>
+            </div>
+            
+            <h3>1.4 Answer Block Formatting <span style="font-size: 0.8em; color: #666;">(4 points)</span></h3>
+            <p>Measures visual formatting that helps AI parse answers.</p>
+            
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+score = 0
+
+// Emphasis tags (1 point)
+if paragraphs_with_emphasis >= 5:
+    score += 1
+
+// Definition/callout boxes (2 points)
+if has_definition_box OR has_callout_box:
+    score += 2
+
+// Blockquotes (1 point)
+if has_blockquote:
+    score += 1
+
+formatting_score = score (max 4)</code>
+            </div>
+        </div>
+        
+        <!-- STRUCTURED DATA SECTION -->
+        <div class="section" id="structured">
+            <h2>2. Structured Data <span class="badge excellent">20 Points</span></h2>
+            <p>Evaluates implementation of Schema.org JSON-LD markup for machine readability.</p>
+            
+            <h3>2.1 JSON-LD Presence <span style="font-size: 0.8em; color: #666;">(8 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+valid_jsonld_blocks = count(valid_jsonld_schemas)
+jsonld_score = min(8, valid_jsonld_blocks × 2)</code>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>JSON-LD Blocks</th>
+                    <th>Score</th>
+                </tr>
+                <tr><td>0</td><td>0 points</td></tr>
+                <tr><td>1</td><td>2 points</td></tr>
+                <tr><td>2</td><td>4 points</td></tr>
+                <tr><td>3</td><td>6 points</td></tr>
+                <tr><td>4+</td><td>8 points</td></tr>
+            </table>
+            
+            <h3>2.2 Schema Type Relevance <span style="font-size: 0.8em; color: #666;">(6 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+relevant_types = ['Article', 'BlogPosting', 'NewsArticle', 'FAQPage', 
+                  'HowTo', 'WebPage', 'Person', 'Organization']
+detected_types = extract_schema_types()
+relevant_found = count(detected_types ∩ relevant_types)
+
+if relevant_found == 0: score = 0
+if relevant_found == 1: score = 3
+if relevant_found == 2: score = 5
+if relevant_found >= 3: score = 6</code>
+            </div>
+            
+            <h3>2.3 FAQ Schema Quality <span style="font-size: 0.8em; color: #666;">(4 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+if NOT has_faq_schema:
+    faq_score = 0
+else:
+    valid_qa_pairs = count_valid_qa_pairs(faq_schema)
+    faq_score = min(4, valid_qa_pairs × 0.5)</code>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>Valid Q&A Pairs</th>
+                    <th>Score</th>
+                </tr>
+                <tr><td>0</td><td>0 points</td></tr>
+                <tr><td>1-3</td><td>1-2 points</td></tr>
+                <tr><td>4-6</td><td>2-3 points</td></tr>
+                <tr><td>7+</td><td>4 points</td></tr>
+            </table>
+            
+            <h3>2.4 Completeness of Required Fields <span style="font-size: 0.8em; color: #666;">(2 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+for each schema in schemas:
+    required_fields = get_required_fields(schema['@type'])
+    present_fields = count(required_fields present in schema)
+    completeness = present_fields / total_required_fields
+
+avg_completeness = mean(all completeness_scores)
+completeness_score = avg_completeness × 2</code>
+            </div>
+            
+            <div class="example-box">
+                <strong>Example:</strong> Article schema has 4 required fields, 3 are present → Completeness = 3/4 = 0.75 → Score = 0.75 × 2 = <strong>1.5 points</strong>
+            </div>
+        </div>
+        
+        <!-- AUTHORITY SECTION -->
+        <div class="section" id="authority">
+            <h2>3. Authority & Provenance <span class="badge good">15 Points</span></h2>
+            <p>Measures signals of authorship, credibility, and transparency.</p>
+            
+            <h3>3.1 Author Information <span style="font-size: 0.8em; color: #666;">(5 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+if NOT has_author:
+    author_score = 0
+else:
+    author_score = 3  // Base score for having author
+    if author_in_jsonld:
+        author_score += 2  // Bonus for structured data
+    // Max 5 points</code>
+            </div>
+            
+            <h3>3.2 Publication Date <span style="font-size: 0.8em; color: #666;">(3 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+score = 0
+if has_publication_date:
+    score += 2
+if has_modified_date:
+    score += 1
+dates_score = score (max 3)</code>
+            </div>
+            
+            <h3>3.3 Citations & Sources <span style="font-size: 0.8em; color: #666;">(4 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+external_links_count = count(external_links)
+citations_score = min(4, external_links_count × 0.5)</code>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>External Links</th>
+                    <th>Score</th>
+                </tr>
+                <tr><td>0-1</td><td>0-0.5 points</td></tr>
+                <tr><td>2-3</td><td>1-1.5 points</td></tr>
+                <tr><td>4-5</td><td>2-2.5 points</td></tr>
+                <tr><td>6-7</td><td>3-3.5 points</td></tr>
+                <tr><td>8+</td><td>4 points</td></tr>
+            </table>
+            
+            <h3>3.4 Organization Information <span style="font-size: 0.8em; color: #666;">(3 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+if 'Organization' in schema_types:
+    org_score = 3
+else:
+    org_score = 0</code>
+            </div>
+        </div>
+        
+        <!-- CONTENT QUALITY SECTION -->
+        <div class="section" id="content">
+            <h2>4. Content Quality & Uniqueness <span class="badge good">10 Points</span></h2>
+            <p>Evaluates content depth, uniqueness, and freshness.</p>
+            
+            <h3>4.1 Content Depth <span style="font-size: 0.8em; color: #666;">(4 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+score = 0
+
+// Word count (2 points)
+if word_count >= 2000:
+    score += 2
+elif word_count >= 1000:
+    score += 1
+
+// Section count (2 points)
+h2_headings_count = count(headings where level == 2)
+if h2_headings_count >= 8:
+    score += 2
+elif h2_headings_count >= 5:
+    score += 1
+
+depth_score = score (max 4)</code>
+            </div>
+            
+            <h3>4.2 Unique Value Proposition <span style="font-size: 0.8em; color: #666;">(3 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+score = 0
+if table_count >= 1:
+    score += 1
+if list_count >= 3:
+    score += 1
+// Placeholder for images/code blocks
+score += 1
+
+uniqueness_score = score (max 3)</code>
+            </div>
+            
+            <h3>4.3 Freshness <span style="font-size: 0.8em; color: #666;">(3 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+last_modified = modified_date OR published_date
+days_old = (today - last_modified).days
+
+if days_old <= 90:
+    freshness_score = 3
+elif days_old <= 180:
+    freshness_score = 2
+elif days_old <= 365:
+    freshness_score = 1
+else:
+    freshness_score = 0</code>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>Content Age</th>
+                    <th>Score</th>
+                </tr>
+                <tr><td>0-90 days</td><td>3 points</td></tr>
+                <tr><td>91-180 days</td><td>2 points</td></tr>
+                <tr><td>181-365 days</td><td>1 point</td></tr>
+                <tr><td>365+ days</td><td>0 points</td></tr>
+            </table>
+        </div>
+        
+        <!-- CITATION-ABILITY SECTION -->
+        <div class="section" id="citation">
+            <h2>5. Citation-ability & Trust <span class="badge good">10 Points</span></h2>
+            <p>Measures how well the page presents facts for AI citation.</p>
+            
+            <h3>5.1 Clear Statements of Fact <span style="font-size: 0.8em; color: #666;">(4 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+emphasized_paragraphs = count(paragraphs with emphasis tags)
+facts_score = min(4, emphasized_paragraphs × 0.3)</code>
+            </div>
+            
+            <h3>5.2 Data Tables & Lists <span style="font-size: 0.8em; color: #666;">(3 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+table_score = min(1.5, table_count × 0.5)
+list_score = min(1.5, list_count × 0.2)
+data_score = table_score + list_score (max 3)</code>
+            </div>
+            
+            <h3>5.3 HTTPS Security <span style="font-size: 0.8em; color: #666;">(2 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+if url.startswith('https://'):
+    security_score = 2
+else:
+    security_score = 0</code>
+            </div>
+            
+            <h3>5.4 No Intrusive Elements <span style="font-size: 0.8em; color: #666;">(1 point)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+// Placeholder - would detect popups, excessive ads
+no_intrusive_score = 1  // Default full points</code>
+            </div>
+        </div>
+        
+        <!-- TECHNICAL SECTION -->
+        <div class="section" id="technical">
+            <h2>6. Technical & UX Signals <span class="badge good">10 Points</span></h2>
+            <p>Evaluates technical SEO and user experience factors.</p>
+            
+            <h3>6.1 Page Performance <span style="font-size: 0.8em; color: #666;">(3 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+ttfb_ms = time_to_first_byte (milliseconds)
+
+if ttfb_ms <= 500:
+    performance_score = 3
+elif ttfb_ms <= 1000:
+    performance_score = 2
+elif ttfb_ms <= 2000:
+    performance_score = 1
+else:
+    performance_score = 0</code>
+            </div>
+            
+            <table>
+                <tr>
+                    <th>TTFB (Time to First Byte)</th>
+                    <th>Score</th>
+                </tr>
+                <tr><td>≤ 500ms</td><td>3 points</td></tr>
+                <tr><td>501-1000ms</td><td>2 points</td></tr>
+                <tr><td>1001-2000ms</td><td>1 point</td></tr>
+                <tr><td>> 2000ms</td><td>0 points</td></tr>
+            </table>
+            
+            <h3>6.2 Mobile Friendliness <span style="font-size: 0.8em; color: #666;">(2 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+// Simplified check for viewport meta tag
+if has_meta_tags:
+    mobile_score = 2
+else:
+    mobile_score = 0</code>
+            </div>
+            
+            <h3>6.3 Semantic HTML <span style="font-size: 0.8em; color: #666;">(2 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+score = 0
+if has_h1_heading:
+    score += 1
+if has_h2_headings:
+    score += 1
+
+semantic_score = score (max 2)</code>
+            </div>
+            
+            <h3>6.4 Internal Linking <span style="font-size: 0.8em; color: #666;">(2 points)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+// Placeholder - would analyze internal link structure
+internal_linking_score = 1  // Default partial score</code>
+            </div>
+            
+            <h3>6.5 Meta Description <span style="font-size: 0.8em; color: #666;">(1 point)</span></h3>
+            <div class="formula-box">
+                <code><strong>Formula:</strong>
+meta_description_length = len(meta_description)
+
+if 50 <= meta_description_length <= 160:
+    meta_score = 1
+else:
+    meta_score = 0</code>
+            </div>
+        </div>
+        
+        <!-- AI CITATION SECTION -->
+        <div class="section">
+            <h2>7. AI Citation Score <span class="badge fair">5 Points</span></h2>
+            <p>Measures how often AI models cite this content (currently not implemented in MVP).</p>
+            
+            <div class="formula-box">
+                <code><strong>Future Formula:</strong>
+// Would query GPT-4, Gemini, Perplexity
+total_queries = 20 × 3  // 60 total queries
+citations = count(url_citations_in_ai_responses)
+verbatim_quotes = count(verbatim_quotes_from_page)
+
+citation_rate = (citations + verbatim_quotes) / total_queries
+ai_citation_score = min(5, citation_rate × 10)</code>
+            </div>
+            
+            <div class="example-box">
+                <strong>Note:</strong> This feature requires API access to LLM services and is not currently active. Placeholder score is 0.
+            </div>
+        </div>
+        
+        <!-- FINAL SCORE SECTION -->
+        <div class="section" id="final">
+            <h2>Final Score Calculation</h2>
+            
+            <div class="formula-box">
+                <code><strong>Complete Calculation:</strong>
+// Step 1: Calculate each category
+answerability = calculate_answerability(page_data)      // max 30
+structured_data = calculate_structured_data(page_data)  // max 20
+authority = calculate_authority(page_data)              // max 15
+content_quality = calculate_content_quality(page_data)  // max 10
+citationability = calculate_citationability(page_data)  // max 10
+technical = calculate_technical(page_data)              // max 10
+ai_citation = calculate_ai_citation(page_data)          // max 5
+
+// Step 2: Sum all scores
+overall_score = answerability + structured_data + authority + 
+                content_quality + citationability + technical + ai_citation
+
+// Step 3: Assign grade
+if overall_score >= 90: grade = 'A+'
+elif overall_score >= 80: grade = 'A'
+elif overall_score >= 70: grade = 'B+'
+elif overall_score >= 60: grade = 'B'
+elif overall_score >= 50: grade = 'C'
+else: grade = 'F'</code>
+            </div>
+            
+            <table style="margin-top: 30px;">
+                <tr>
+                    <th>Score Range</th>
+                    <th>Grade</th>
+                    <th>Interpretation</th>
+                </tr>
+                <tr>
+                    <td>90-100</td>
+                    <td><span class="badge excellent">A+</span></td>
+                    <td>Excellent AEO optimization</td>
+                </tr>
+                <tr>
+                    <td>80-89</td>
+                    <td><span class="badge excellent">A</span></td>
+                    <td>Very good AEO optimization</td>
+                </tr>
+                <tr>
+                    <td>70-79</td>
+                    <td><span class="badge good">B+</span></td>
+                    <td>Good AEO optimization</td>
+                </tr>
+                <tr>
+                    <td>60-69</td>
+                    <td><span class="badge good">B</span></td>
+                    <td>Fair AEO optimization</td>
+                </tr>
+                <tr>
+                    <td>50-59</td>
+                    <td><span class="badge fair">C</span></td>
+                    <td>Basic AEO optimization</td>
+                </tr>
+                <tr>
+                    <td>0-49</td>
+                    <td><span class="badge poor">F</span></td>
+                    <td>Needs significant AEO improvements</td>
+                </tr>
+            </table>
+            
+            <div class="example-box" style="margin-top: 30px;">
+                <strong>Complete Example:</strong>
+                <br><br>
+                Answerability: 18.0/30 (60%)
+                <br>Structured Data: 12.0/20 (60%)
+                <br>Authority: 9.0/15 (60%)
+                <br>Content Quality: 6.0/10 (60%)
+                <br>Citation-ability: 7.2/10 (72%)
+                <br>Technical: 8.0/10 (80%)
+                <br>AI Citation: 0.0/5 (0%)
+                <br><br>
+                <strong>Total Score: 60.2/100 → Grade: B</strong>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 50px;">
+            <a href="/" class="back-link">← Back to AEO Score Auditor</a>
+        </div>
+    </div>
+</body>
+</html>
+
