@@ -42,6 +42,7 @@ class ProgressTracker:
     def __init__(self):
         self._progress: Dict[str, ProgressUpdate] = {}
         self._listeners: Dict[str, list] = {}
+        self._results: Dict[str, Any] = {}  # Separate storage for results
     
     def create_job(self, job_id: str, total_urls: int = 0):
         """Initialize a new job"""
@@ -122,12 +123,25 @@ class ProgressTracker:
             message=message or ("Audit completed successfully" if success else "Audit failed")
         )
     
+    def store_result(self, job_id: str, result: Any):
+        """Store result separately for reliable retrieval"""
+        self._results[job_id] = result
+        # Also attach to progress
+        if job_id in self._progress:
+            self._progress[job_id].result = result
+    
+    def get_result(self, job_id: str) -> Optional[Any]:
+        """Get stored result"""
+        return self._results.get(job_id)
+    
     def cleanup(self, job_id: str):
         """Clean up job data"""
         if job_id in self._progress:
             del self._progress[job_id]
         if job_id in self._listeners:
             del self._listeners[job_id]
+        if job_id in self._results:
+            del self._results[job_id]
 
 
 # Global progress tracker instance

@@ -137,18 +137,58 @@ async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
         )
         result = await orchestrator.audit_domain(domain_url)
         
-        # Store result in progress tracker
-        progress_tracker.update(
-            job_id,
-            result=result
-        )
+        # Store result in progress tracker (separate storage for reliability)
+        progress_tracker.store_result(job_id, result)
         
-        logger.info(f"Domain audit completed: {job_id}")
+        logger.info(f"Domain audit completed: {job_id}, result stored")
+        logger.debug(f"Result keys: {result.keys() if result else 'None'}")
         
     except Exception as e:
         logger.error(f"Domain audit failed for {job_id}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         from progress_tracker import progress_tracker
         progress_tracker.complete_job(job_id, success=False, message=str(e))
+
+
+@router.get("/domain/result/{job_id}")
+async def get_domain_result(job_id: str):
+    """
+    Get completed result for a domain audit job
+    
+    Args:
+        job_id: Job ID from domain audit
+        
+    Returns:
+        Completed audit result
+    """
+    from progress_tracker import progress_tracker
+    
+    progress = progress_tracker.get_progress(job_id)
+    
+    if not progress:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if progress.status not in ["completed", "failed"]:
+        raise HTTPException(status_code=400, detail="Job not yet completed")
+    
+    # Try to get result from separate storage first
+    result = progress_tracker.get_result(job_id)
+    
+    if not result:
+        # Fallback to progress.result
+        result = progress.result
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Result not available")
+    
+    logger.info(f"Returning result for job {job_id}")
+    
+    return {
+        "job_id": job_id,
+        "status": progress.status,
+        "result": result
+    }
 
 
 @router.get("/domain/progress/{job_id}")
@@ -183,20 +223,24 @@ async def get_domain_progress(job_id: str):
                     
                     # If completed or failed, send final result and close
                     if progress.status in ["completed", "failed"]:
-                        # Wait a moment for result to be attached
-                        await asyncio.sleep(0.2)
+                        # Wait a moment for result to be stored
+                        await asyncio.sleep(0.3)
                         
-                        # Get fresh progress with result
-                        final_progress = progress_tracker.get_progress(job_id)
-                        if final_progress and final_progress.result:
+                        # Get result from separate storage (more reliable)
+                        result = progress_tracker.get_result(job_id)
+                        
+                        if result:
                             import json
                             result_data = {
                                 'status': 'done',
-                                'result': final_progress.result
+                                'result': result
                             }
+                            logger.info(f"Sending final result via SSE for job {job_id}")
                             yield f"data: {json.dumps(result_data, default=str)}\n\n"
+                        else:
+                            logger.warning(f"Result not found for completed job {job_id}")
                         
-                        await asyncio.sleep(0.3)
+                        await asyncio.sleep(0.2)
                         break
                         
                 except asyncio.TimeoutError:

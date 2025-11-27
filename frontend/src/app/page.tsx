@@ -90,6 +90,7 @@ export default function Home() {
     if (!jobId) return;
 
     const eventSource = new EventSource(`http://localhost:8000/api/v1/audit/domain/progress/${jobId}`);
+    let completionTimeout: NodeJS.Timeout;
 
     eventSource.onmessage = (event) => {
       try {
@@ -97,13 +98,43 @@ export default function Home() {
         console.log('SSE received:', data); // Debug log
         
         if (data.status === 'done' && data.result) {
-          // Final result received
-          console.log('Final result received:', data.result);
+          // Final result received via SSE
+          console.log('Final result received via SSE:', data.result);
           setDomainResult(data.result);
           setProgress(null);
           setLoading(false);
           setJobId(null);
           eventSource.close();
+          if (completionTimeout) clearTimeout(completionTimeout);
+        } else if (data.status === 'completed' && data.percentage === 100) {
+          // Progress shows completed, wait for result or fetch it
+          console.log('Audit completed at 100%, waiting for result...');
+          setProgress(data);
+          
+          // Fallback: If result doesn't arrive via SSE in 2 seconds, fetch it directly
+          completionTimeout = setTimeout(async () => {
+            console.log('Result not received via SSE, fetching directly...');
+            try {
+              // Fetch the completed result directly
+              const response = await fetch(`http://localhost:8000/api/v1/audit/domain/result/${jobId}`);
+              if (response.ok) {
+                const resultData = await response.json();
+                console.log('Result fetched directly:', resultData);
+                setDomainResult(resultData.result);
+                setProgress(null);
+                setLoading(false);
+                setJobId(null);
+                eventSource.close();
+              }
+            } catch (err) {
+              console.error('Failed to fetch result:', err);
+              setError('Audit completed but failed to fetch results. Please try again.');
+              setProgress(null);
+              setLoading(false);
+              setJobId(null);
+              eventSource.close();
+            }
+          }, 2000);
         } else {
           // Progress update
           setProgress(data);
@@ -118,10 +149,12 @@ export default function Home() {
       eventSource.close();
       setLoading(false);
       setJobId(null);
+      if (completionTimeout) clearTimeout(completionTimeout);
     };
 
     return () => {
       eventSource.close();
+      if (completionTimeout) clearTimeout(completionTimeout);
     };
   }, [jobId]);
 
