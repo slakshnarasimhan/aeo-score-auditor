@@ -23,7 +23,9 @@ class AuditOptions(BaseModel):
 class PageAuditRequest(BaseModel):
     """Request to audit a single page"""
     url: HttpUrl
-    options: Optional[AuditOptions] = AuditOptions()
+    deep_crawl: bool = False  # For backward compatibility with frontend
+    re_audit: bool = False  # For backward compatibility with frontend
+    options: Optional[AuditOptions] = None
 
 
 class DomainAuditRequest(BaseModel):
@@ -51,53 +53,27 @@ async def audit_page(request: PageAuditRequest, background_tasks: BackgroundTask
         background_tasks: FastAPI background tasks
         
     Returns:
-        Job information with status tracking URL
+        Job information with complete audit results (runs synchronously for MVP)
     """
     logger.info(f"Received audit request for: {request.url}")
     
     # Generate job ID
     job_id = f"job_{uuid.uuid4().hex[:12]}"
     
-    # Estimate completion time
-    estimated_time = 180 if not request.options.include_ai_citation else 300  # seconds
-    estimated_completion = datetime.utcnow().isoformat() + "Z"
+    # Use default options if not provided
+    options = request.options if request.options else AuditOptions()
     
-    # Create job in database (placeholder)
-    job_data = {
+    # For MVP, always run synchronously and return complete results
+    result = await _execute_audit(str(request.url), options)
+    
+    return {
         "job_id": job_id,
-        "type": "page_audit",
+        "status": "completed",
         "url": str(request.url),
-        "options": request.options.dict(),
-        "status": "queued",
-        "created_at": datetime.utcnow().isoformat()
+        "status_url": f"/api/v1/jobs/{job_id}",
+        "result": result,
+        "completed_at": datetime.utcnow().isoformat()
     }
-    
-    # TODO: Save to database
-    # await db.jobs.insert_one(job_data)
-    
-    # Queue the audit task (placeholder)
-    if request.options.wait_for_completion:
-        # Synchronous execution (for testing)
-        result = await _execute_audit(str(request.url), request.options)
-        return {
-            "job_id": job_id,
-            "status": "completed",
-            "url": str(request.url),
-            "status_url": f"/api/v1/jobs/{job_id}",
-            "result": result,
-            "completed_at": datetime.utcnow().isoformat()
-        }
-    else:
-        # Asynchronous execution
-        background_tasks.add_task(_execute_audit, str(request.url), request.options)
-        
-        return AuditResponse(
-            job_id=job_id,
-            status="queued",
-            url=str(request.url),
-            estimated_completion=estimated_completion,
-            status_url=f"/api/v1/jobs/{job_id}"
-        )
 
 
 @router.post("/domain", response_model=AuditResponse)

@@ -20,15 +20,13 @@ class ContentParser:
         self.remove_noise()
     
     def remove_noise(self):
-        """Remove non-content elements"""
-        # Remove scripts, styles, nav, footer, etc.
-        for element in self.soup.find_all(['script', 'style', 'nav', 'footer', 'header', 'aside']):
+        """Remove non-content elements (less aggressive for compatibility)"""
+        # Remove scripts and styles only - keep structural elements
+        for element in self.soup.find_all(['script', 'style']):
             element.decompose()
         
-        # Remove ads
-        for element in self.soup.find_all(
-            class_=lambda x: x and any(ad in str(x).lower() for ad in ['ad', 'advertisement', 'sponsored'])
-        ):
+        # Remove obvious navigation/footer only if they have identifying classes/ids
+        for element in self.soup.find_all(['nav', 'footer']):
             element.decompose()
         
         logger.debug("Removed noise elements from HTML")
@@ -41,14 +39,22 @@ class ContentParser:
             Clean text content
         """
         # Priority search for main content area
+        # Try multiple strategies to find content
         main = (
             self.soup.find('main') or
             self.soup.find('article') or
+            self.soup.find('div', {'id': 'content'}) or  # Wikipedia uses id="content"
+            self.soup.find('div', {'id': 'mw-content-text'}) or  # Wikipedia main content
+            self.soup.find('div', {'role': 'main'}) or
             self.soup.find('div', class_=lambda x: x and 'content' in str(x).lower()) or
             self.soup.find('body')
         )
         
         if main:
+            # Extract text but remove navigation/sidebar elements
+            for noise in main.find_all(['nav', 'aside', '.sidebar', '.navigation']):
+                noise.decompose()
+            
             text = main.get_text(separator=' ', strip=True)
             logger.debug(f"Extracted {len(text)} characters of main content")
             return text
