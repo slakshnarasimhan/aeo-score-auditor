@@ -83,6 +83,7 @@ async def audit_page(request: PageAuditRequest, background_tasks: BackgroundTask
             "job_id": job_id,
             "status": "completed",
             "url": str(request.url),
+            "status_url": f"/api/v1/jobs/{job_id}",
             "result": result,
             "completed_at": datetime.utcnow().isoformat()
         }
