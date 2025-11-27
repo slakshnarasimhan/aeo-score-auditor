@@ -184,17 +184,24 @@ class DomainCrawler:
 class DomainAuditOrchestrator:
     """Orchestrates auditing multiple pages across a domain"""
     
-    def __init__(self, max_pages: int = 10, max_concurrent: int = 3):
+    def __init__(self, max_pages: int = 100, max_concurrent: int = 3, job_id: Optional[str] = None):
         """
         Initialize orchestrator
         
         Args:
-            max_pages: Maximum pages to audit
+            max_pages: Maximum pages to audit (default: 100, set to 0 for unlimited)
             max_concurrent: Maximum concurrent audits
+            job_id: Job ID for progress tracking
         """
-        self.max_pages = max_pages
+        self.max_pages = max_pages if max_pages > 0 else 9999
         self.max_concurrent = max_concurrent
-        self.crawler = DomainCrawler(max_pages=max_pages)
+        self.crawler = DomainCrawler(max_pages=self.max_pages)
+        self.job_id = job_id
+        self.tracker = None
+        
+        if job_id:
+            from progress_tracker import progress_tracker
+            self.tracker = progress_tracker
     
     async def audit_domain(self, domain_url: str) -> Dict:
         """
@@ -210,16 +217,38 @@ class DomainAuditOrchestrator:
         
         logger.info(f"Starting domain audit for: {domain_url}")
         
+        # Report progress: discovering
+        if self.tracker and self.job_id:
+            self.tracker.update(
+                self.job_id,
+                status="discovering",
+                current_step="Discovering URLs from sitemap or crawling...",
+                message=f"Analyzing {domain_url}"
+            )
+        
         # Step 1: Discover URLs
         urls = await self.crawler.discover_urls(domain_url)
         logger.info(f"Discovered {len(urls)} URLs to audit")
         
         if not urls:
+            if self.tracker and self.job_id:
+                self.tracker.complete_job(self.job_id, success=False, message="No URLs discovered")
             return {
                 'domain': domain_url,
                 'error': 'No URLs discovered',
                 'pages_audited': 0
             }
+        
+        # Report progress: URLs discovered
+        if self.tracker and self.job_id:
+            self.tracker.update(
+                self.job_id,
+                status="auditing",
+                current_step=f"Auditing {len(urls)} pages...",
+                total_urls=len(urls),
+                urls_discovered=len(urls),
+                message=f"Found {len(urls)} pages to audit"
+            )
         
         # Step 2: Audit each page (with concurrency limit)
         pipeline = AuditPipeline()
@@ -241,17 +270,34 @@ class DomainAuditOrchestrator:
                     })
                 else:
                     page_results.append(result)
+                
+                # Report progress after each page
+                if self.tracker and self.job_id:
+                    self.tracker.update(
+                        self.job_id,
+                        pages_audited=len(page_results),
+                        current_url=url,
+                        message=f"Audited {len(page_results)}/{len(urls)} pages"
+                    )
             
             logger.info(f"Audited {len(page_results)}/{len(urls)} pages...")
         
         # Step 3: Aggregate results
         aggregated = self._aggregate_results(domain_url, page_results)
         
+        # Report completion
+        if self.tracker and self.job_id:
+            self.tracker.complete_job(
+                self.job_id,
+                success=True,
+                message=f"Completed! Average score: {aggregated['overall_score']}/100"
+            )
+        
         logger.info(f"Domain audit complete: {aggregated['overall_score']}/100")
         return aggregated
     
     def _aggregate_results(self, domain_url: str, page_results: List[Dict]) -> Dict:
-        """Aggregate results from multiple pages"""
+        """Aggregate results from multiple pages with detailed per-page breakdown"""
         
         # Filter out errors
         valid_results = [r for r in page_results if 'overall_score' in r and r['overall_score'] > 0]
@@ -269,20 +315,32 @@ class DomainAuditOrchestrator:
         # Calculate averages
         avg_score = sum(r['overall_score'] for r in valid_results) / len(valid_results)
         
-        # Aggregate breakdown scores
+        # Aggregate breakdown scores with per-page details
         breakdown = {}
         first_result = valid_results[0]
         
         for category, score_data in first_result.get('breakdown', {}).items():
-            category_scores = [r['breakdown'][category]['score'] 
-                             for r in valid_results 
-                             if category in r.get('breakdown', {})]
+            # Collect all scores and page details for this category
+            page_scores = []
+            for r in valid_results:
+                if category in r.get('breakdown', {}):
+                    cat_data = r['breakdown'][category]
+                    page_scores.append({
+                        'url': r['url'],
+                        'score': cat_data['score'],
+                        'percentage': cat_data.get('percentage', 0),
+                        'sub_scores': cat_data.get('sub_scores', {})
+                    })
             
-            if category_scores:
+            if page_scores:
+                avg_category_score = sum(p['score'] for p in page_scores) / len(page_scores)
                 breakdown[category] = {
-                    'score': round(sum(category_scores) / len(category_scores), 1),
+                    'score': round(avg_category_score, 1),
                     'max': score_data['max'],
-                    'percentage': round((sum(category_scores) / len(category_scores) / score_data['max']) * 100, 1)
+                    'percentage': round((avg_category_score / score_data['max']) * 100, 1),
+                    'page_scores': page_scores,  # Per-page scores for this category
+                    'best_page': max(page_scores, key=lambda x: x['score']),
+                    'worst_page': min(page_scores, key=lambda x: x['score'])
                 }
         
         # Determine grade

@@ -2,11 +2,13 @@
 Audit API endpoints
 """
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, List
 from loguru import logger
 import uuid
 from datetime import datetime
+import asyncio
 
 router = APIRouter()
 
@@ -79,15 +81,16 @@ async def audit_page(request: PageAuditRequest, background_tasks: BackgroundTask
 @router.post("/domain")
 async def audit_domain(request: DomainAuditRequest, background_tasks: BackgroundTasks):
     """
-    Start a domain-wide AEO audit
+    Start a domain-wide AEO audit with progress tracking
     
-    Crawls multiple pages from a domain and provides aggregated scores
+    Crawls multiple pages from a domain and provides aggregated scores.
+    Use /api/v1/audit/domain/progress/{job_id} to track progress.
     
     Args:
         request: Domain audit request
         
     Returns:
-        Aggregated domain audit results
+        Job information with job_id for progress tracking
     """
     logger.info(f"Received domain audit request for: {request.domain}")
     
@@ -99,37 +102,110 @@ async def audit_domain(request: DomainAuditRequest, background_tasks: Background
     if not domain_url.startswith('http'):
         domain_url = f"https://{domain_url}"
     
+    # Get max_pages from options (default: 100, set 0 for unlimited)
+    max_pages = 100
+    if request.options and 'max_pages' in request.options:
+        max_pages = request.options['max_pages']
+    
+    # Initialize progress tracking
+    from progress_tracker import progress_tracker
+    progress_tracker.create_job(job_id, total_urls=max_pages)
+    
+    # Run audit in background
+    background_tasks.add_task(_run_domain_audit, job_id, domain_url, max_pages)
+    
+    return {
+        "job_id": job_id,
+        "status": "queued",
+        "domain": request.domain,
+        "progress_url": f"/api/v1/audit/domain/progress/{job_id}",
+        "message": "Audit started. Use progress_url to track progress.",
+        "estimated_pages": max_pages if max_pages > 0 else "unlimited"
+    }
+
+
+async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
+    """Background task to run domain audit"""
     try:
-        # Import domain audit orchestrator
         from crawler.domain_crawler import DomainAuditOrchestrator
+        from progress_tracker import progress_tracker
         
-        # Get max_pages from options or default to 10
-        max_pages = 10
-        if request.options and 'max_pages' in request.options:
-            max_pages = min(request.options['max_pages'], 50)  # Cap at 50 pages
-        
-        orchestrator = DomainAuditOrchestrator(max_pages=max_pages, max_concurrent=3)
+        orchestrator = DomainAuditOrchestrator(
+            max_pages=max_pages,
+            max_concurrent=3,
+            job_id=job_id
+        )
         result = await orchestrator.audit_domain(domain_url)
         
-        return {
-            "job_id": job_id,
-            "status": "completed",
-            "domain": request.domain,
-            "status_url": f"/api/v1/jobs/{job_id}",
-            "result": result,
-            "completed_at": datetime.utcnow().isoformat()
-        }
+        # Store result (in production, save to database)
+        # For now, we'll keep it in progress tracker's internal state
+        progress = progress_tracker.get_progress(job_id)
+        if progress:
+            progress.result = result
+        
+        logger.info(f"Domain audit completed: {job_id}")
         
     except Exception as e:
-        logger.error(f"Domain audit failed for {domain_url}: {e}")
-        return {
-            "job_id": job_id,
-            "status": "failed",
-            "domain": request.domain,
-            "status_url": f"/api/v1/jobs/{job_id}",
-            "error": str(e),
-            "completed_at": datetime.utcnow().isoformat()
+        logger.error(f"Domain audit failed for {job_id}: {e}")
+        from progress_tracker import progress_tracker
+        progress_tracker.complete_job(job_id, success=False, message=str(e))
+
+
+@router.get("/domain/progress/{job_id}")
+async def get_domain_progress(job_id: str):
+    """
+    Get progress for a domain audit job (Server-Sent Events)
+    
+    Args:
+        job_id: Job ID from domain audit start
+        
+    Returns:
+        SSE stream with progress updates
+    """
+    from progress_tracker import progress_tracker
+    
+    async def event_generator():
+        """Generate SSE events"""
+        queue = asyncio.Queue()
+        progress_tracker.add_listener(job_id, queue)
+        
+        try:
+            # Send initial state
+            progress = progress_tracker.get_progress(job_id)
+            if progress:
+                yield f"data: {progress.to_json()}\n\n"
+            
+            # Stream updates
+            while True:
+                try:
+                    progress = await asyncio.wait_for(queue.get(), timeout=0.5)
+                    yield f"data: {progress.to_json()}\n\n"
+                    
+                    # If completed or failed, send final message and close
+                    if progress.status in ["completed", "failed"]:
+                        # Include result if available
+                        if hasattr(progress, 'result'):
+                            import json
+                            yield f"data: {json.dumps({'status': 'done', 'result': progress.result})}\n\n"
+                        await asyncio.sleep(0.5)
+                        break
+                        
+                except asyncio.TimeoutError:
+                    # Send keep-alive
+                    yield f": keep-alive\n\n"
+                    
+        finally:
+            progress_tracker.remove_listener(job_id, queue)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
         }
+    )
 
 
 async def _execute_audit(url: str, options: AuditOptions) -> dict:
