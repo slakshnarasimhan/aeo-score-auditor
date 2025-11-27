@@ -262,6 +262,49 @@ export default function Home() {
     return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const downloadPDF = async (result: AuditResult | DomainAuditResult, type: 'page' | 'domain') => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/audit/pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audit_result: result,
+          audit_type: type
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Get filename from Content-Disposition header or create one
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'aeo_report.pdf';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      setError(`Failed to download PDF: ${err.message}`);
+      console.error('PDF download error:', err);
+    }
+  };
+
   const getCategoryDescription = (category: string) => {
     const descriptions: Record<string, string> = {
       answerability: "How well the content directly answers questions",
@@ -418,7 +461,16 @@ export default function Home() {
         {/* Single Page Results */}
         {auditResult && (
           <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-xl">
-            <h2 className="text-3xl font-bold mb-4 text-gray-800">📊 Audit Results</h2>
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-3xl font-bold text-gray-800">📊 Audit Results</h2>
+              <button
+                onClick={() => downloadPDF(auditResult, 'page')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
+              >
+                <span>📥</span>
+                <span>Download PDF</span>
+              </button>
+            </div>
             <div className="flex items-baseline gap-4 mb-6">
               <span className="text-5xl font-extrabold text-gray-900">{auditResult.overall_score}</span>
               <span className="text-2xl text-gray-600">/100</span>
@@ -476,7 +528,16 @@ export default function Home() {
         {/* Domain Results */}
         {domainResult && (
           <div className="mt-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl">
-            <h2 className="text-3xl font-bold mb-4 text-gray-800">🌐 Domain Audit Results</h2>
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-3xl font-bold text-gray-800">🌐 Domain Audit Results</h2>
+              <button
+                onClick={() => downloadPDF(domainResult, 'domain')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
+              >
+                <span>📥</span>
+                <span>Download PDF</span>
+              </button>
+            </div>
             
             <div className="mb-6 p-4 bg-white rounded-lg shadow">
               <p className="text-sm text-gray-600 mb-2">Domain: <span className="font-semibold">{domainResult.domain}</span></p>

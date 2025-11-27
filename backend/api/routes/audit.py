@@ -4,7 +4,7 @@ Audit API endpoints
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, HttpUrl
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from loguru import logger
 import uuid
 from datetime import datetime
@@ -292,4 +292,54 @@ async def _execute_audit(url: str, options: AuditOptions) -> dict:
             "error": str(e),
             "breakdown": {}
         }
+
+
+class PDFRequest(BaseModel):
+    """Request to generate PDF report"""
+    audit_result: Dict[str, Any]
+    audit_type: str = "page"  # "page" or "domain"
+
+
+@router.post("/pdf")
+async def download_pdf_report(request: PDFRequest):
+    """
+    Generate and download PDF report from audit results
+    
+    Args:
+        request: PDF generation request with audit results
+        
+    Returns:
+        PDF file download
+    """
+    try:
+        from reporting.pdf_generator import generate_pdf_report
+        
+        logger.info(f"Generating PDF report for {request.audit_type} audit")
+        
+        # Generate PDF
+        pdf_buffer = generate_pdf_report(request.audit_result, request.audit_type)
+        
+        # Create filename
+        if request.audit_type == 'domain':
+            url_part = request.audit_result.get('domain', 'domain').replace('https://', '').replace('http://', '').replace('/', '_')[:30]
+        else:
+            url_part = request.audit_result.get('url', 'page').replace('https://', '').replace('http://', '').replace('/', '_')[:30]
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"aeo_report_{url_part}_{timestamp}.pdf"
+        
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Type": "application/pdf"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"PDF generation failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
 
