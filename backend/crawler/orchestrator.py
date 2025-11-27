@@ -5,12 +5,26 @@ from typing import Dict
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import json
+import os
 
-from .http_fetcher import HTTPFetcher, PageData
 from .parser import ContentParser
 from .extractors.semantic import SemanticExtractor
 from .extractors.schema import SchemaExtractor
 from loguru import logger
+
+# Use Playwright by default for JS-heavy sites, fall back to HTTP if Playwright fails
+USE_PLAYWRIGHT = os.getenv('USE_PLAYWRIGHT', 'true').lower() == 'true'
+
+if USE_PLAYWRIGHT:
+    try:
+        from .fetcher import PageFetcher as Fetcher, PageData
+        logger.info("Using Playwright fetcher (supports JavaScript rendering)")
+    except ImportError as e:
+        logger.warning(f"Playwright not available ({e}), falling back to HTTP fetcher")
+        from .http_fetcher import HTTPFetcher as Fetcher, PageData
+else:
+    from .http_fetcher import HTTPFetcher as Fetcher, PageData
+    logger.info("Using HTTP fetcher (fast, but no JavaScript support)")
 
 
 @dataclass
@@ -69,7 +83,7 @@ class ExtractionOrchestrator:
     """Coordinates all extraction steps"""
     
     def __init__(self):
-        self.fetcher = HTTPFetcher()
+        self.fetcher = Fetcher()
     
     async def extract(self, url: str) -> ExtractedPageData:
         """

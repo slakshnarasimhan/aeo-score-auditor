@@ -40,6 +40,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - DEBUG=True
       - ENVIRONMENT=development
+      - USE_PLAYWRIGHT=true
     env_file:
       - .env
     depends_on:
@@ -64,6 +65,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - DEBUG=True
       - ENVIRONMENT=development
+      - USE_PLAYWRIGHT=true
     env_file:
       - .env
     depends_on:
