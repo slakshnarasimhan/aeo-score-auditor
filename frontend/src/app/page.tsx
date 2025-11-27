@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 interface ScoreBreakdown {
   score: number;
@@ -89,7 +90,7 @@ export default function Home() {
   useEffect(() => {
     if (!jobId) return;
 
-    const eventSource = new EventSource(`http://localhost:8000/api/v1/audit/domain/progress/${jobId}`);
+    const eventSource = new EventSource(`${API_URL}/api/v1/audit/domain/progress/${jobId}`);
     let completionTimeout: NodeJS.Timeout;
 
     eventSource.onmessage = (event) => {
@@ -116,7 +117,7 @@ export default function Home() {
             console.log('Result not received via SSE, fetching directly...');
             try {
               // Fetch the completed result directly
-              const response = await fetch(`http://localhost:8000/api/v1/audit/domain/result/${jobId}`);
+              const response = await fetch(`${API_URL}/api/v1/audit/domain/result/${jobId}`);
               if (response.ok) {
                 const resultData = await response.json();
                 console.log('Result fetched directly:', resultData);
@@ -167,7 +168,7 @@ export default function Home() {
     setProgress(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/audit/page', {
+      const response = await fetch(`${API_URL}/api/v1/audit/page`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +204,7 @@ export default function Home() {
     setProgress(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/audit/domain', {
+      const response = await fetch(`${API_URL}/api/v1/audit/domain`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

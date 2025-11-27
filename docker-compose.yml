@@ -88,7 +88,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # For network access: Set this to your machine's local IP
+      # Find your IP: hostname -I | awk '{print $1}'
+      - NEXT_PUBLIC_API_URL=http://192.168.0.101:8000
     depends_on:
       - backend
     volumes:
