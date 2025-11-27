@@ -129,30 +129,33 @@ async def audit_domain(request: DomainAuditRequest):
 
 async def _execute_audit(url: str, options: AuditOptions) -> dict:
     """
-    Execute the audit (placeholder implementation)
+    Execute the audit using the real pipeline
     
-    This will be replaced with actual crawler, scoring, and recommendation logic
+    Steps:
+    1. Fetch page with crawler
+    2. Extract data
+    3. Calculate scores
+    4. Generate recommendations
+    5. If enabled, run AI citation analysis (TODO)
     """
-    logger.info(f"Executing audit for {url}")
+    logger.info(f"Executing real audit for {url}")
     
-    # TODO: Implement actual audit pipeline:
-    # 1. Fetch page with crawler
-    # 2. Extract data
-    # 3. Calculate scores
-    # 4. Generate recommendations
-    # 5. If enabled, run AI citation analysis
-    
-    # Placeholder result
-    return {
-        "overall_score": 78.5,
-        "grade": "B+",
-        "breakdown": {
-            "answerability": {"score": 24, "max": 30},
-            "structured_data": {"score": 14, "max": 20},
-            "authority": {"score": 11, "max": 15},
-            "content_quality": {"score": 8, "max": 10},
-            "citationability": {"score": 7, "max": 10},
-            "technical": {"score": 9, "max": 10}
+    try:
+        # Import here to avoid circular imports
+        from audit_pipeline import AuditPipeline
+        
+        pipeline = AuditPipeline()
+        result = await pipeline.audit_page(url, options.dict())
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Audit failed: {e}")
+        # Return error with details
+        return {
+            "overall_score": 0,
+            "grade": "F",
+            "error": str(e),
+            "breakdown": {}
         }
-    }
 

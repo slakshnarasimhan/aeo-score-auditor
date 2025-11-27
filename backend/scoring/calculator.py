@@ -25,16 +25,20 @@ class AEOScoreCalculator:
             'technical': TechnicalScorer()
         }
     
-    def calculate_score(self, page_data: Dict) -> Dict:
+    def calculate_score(self, page_data) -> Dict:
         """
         Calculate complete AEO score
         
         Args:
-            page_data: Extracted page data dictionary
+            page_data: Extracted page data (dict or ExtractedPageData object)
             
         Returns:
             Complete score breakdown
         """
+        # Convert to dict if it's an object
+        if hasattr(page_data, 'to_dict'):
+            page_data = page_data.to_dict()
+        
         logger.info(f"Calculating AEO score for {page_data.get('url', 'unknown')}")
         
         # Calculate each bucket
@@ -55,6 +59,14 @@ class AEOScoreCalculator:
                 'score': ai_score,
                 'max': 5,
                 'percentage': (ai_score / 5) * 100
+            }
+        else:
+            # No AI citation data
+            scores['ai_citation'] = {
+                'score': 0,
+                'max': 5,
+                'percentage': 0,
+                'note': 'AI citation analysis not performed'
             }
         
         # Calculate overall score
