@@ -19,14 +19,10 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None
 )
 
-# CORS middleware
+# CORS middleware - allow all origins for network access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-    ] if settings.DEBUG else ["https://yourdomain.com"],
+    allow_origins=["*"],  # Allow all origins for network sharing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
