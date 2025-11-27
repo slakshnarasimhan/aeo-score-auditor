@@ -41,7 +41,7 @@ class AuditResponse(BaseModel):
     status_url: str
 
 
-@router.post("/page", response_model=AuditResponse)
+@router.post("/page")
 async def audit_page(request: PageAuditRequest, background_tasks: BackgroundTasks):
     """
     Start a single-page AEO audit
