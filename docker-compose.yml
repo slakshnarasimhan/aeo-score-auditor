@@ -48,6 +48,7 @@ services:
       - redis
     volumes:
       - ./backend:/app
+      - playwright_cache:/root/.cache/ms-playwright
     networks:
       - aeo_network
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -73,6 +74,7 @@ services:
       - redis
     volumes:
       - ./backend:/app
+      - playwright_cache:/root/.cache/ms-playwright
     networks:
       - aeo_network
     command: celery -A workers.celery_app worker --loglevel=info
@@ -99,6 +101,7 @@ services:
 volumes:
   mongodb_data:
   redis_data:
+  playwright_cache:
 
 networks:
   aeo_network:
