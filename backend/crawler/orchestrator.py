@@ -12,8 +12,8 @@ from .extractors.semantic import SemanticExtractor
 from .extractors.schema import SchemaExtractor
 from loguru import logger
 
-# Use Playwright by default for JS-heavy sites, fall back to HTTP if Playwright fails
-USE_PLAYWRIGHT = os.getenv('USE_PLAYWRIGHT', 'true').lower() == 'true'
+# Use Playwright for JS-heavy sites if enabled (default: false for MVP speed)
+USE_PLAYWRIGHT = os.getenv('USE_PLAYWRIGHT', 'false').lower() == 'true'
 
 if USE_PLAYWRIGHT:
     try:
