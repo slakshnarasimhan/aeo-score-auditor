@@ -14,8 +14,9 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Install Playwright browsers
-RUN playwright install-deps && playwright install chromium
+# Skip Playwright browser installation in Docker for MVP
+# Can be installed at runtime when needed: playwright install chromium
+# RUN playwright install chromium
 
 # Copy application code
 COPY . .
