@@ -13,15 +13,15 @@ from bs4 import BeautifulSoup
 class DomainCrawler:
     """Discovers URLs across a domain"""
     
-    def __init__(self, max_pages: int = 10, max_depth: int = 2):
+    def __init__(self, max_pages: int = 10, max_depth: int = 5):
         """
         Initialize domain crawler
         
         Args:
-            max_pages: Maximum number of pages to crawl
-            max_depth: Maximum depth from starting URL
+            max_pages: Maximum number of pages to crawl (0 or very large number = unlimited)
+            max_depth: Maximum depth from starting URL (increased default for better coverage)
         """
-        self.max_pages = max_pages
+        self.max_pages = max_pages if max_pages > 0 else 999999  # Treat 0 as unlimited
         self.max_depth = max_depth
         self.visited: Set[str] = set()
         self.discovered: Set[str] = set()
@@ -46,37 +46,43 @@ class DomainCrawler:
         sitemap_urls = await self._discover_from_sitemap(base_domain)
         if sitemap_urls:
             logger.info(f"Discovered {len(sitemap_urls)} URLs from sitemap")
-            return sitemap_urls[:self.max_pages]
+            # Limit if max_pages is set (if it's 999999, this effectively returns all)
+            limited_urls = sitemap_urls[:self.max_pages]
+            logger.info(f"Returning {len(limited_urls)} URLs (max_pages={self.max_pages})")
+            return limited_urls
         
         # Strategy 2: Crawl from homepage
         logger.info("No sitemap found, crawling from homepage...")
         crawled_urls = await self._crawl_from_page(domain_url, base_domain)
         
-        return list(crawled_urls)[:self.max_pages]
+        limited_urls = list(crawled_urls)[:self.max_pages]
+        logger.info(f"Returning {len(limited_urls)} URLs from crawling (max_pages={self.max_pages})")
+        return limited_urls
     
     async def _discover_from_sitemap(self, base_domain: str) -> List[str]:
-        """Try to discover URLs from sitemap.xml"""
+        """Try to discover URLs from sitemap.xml (recursively handles sitemap indexes)"""
         sitemap_urls = [
             f"{base_domain}/sitemap.xml",
             f"{base_domain}/sitemap_index.xml",
             f"{base_domain}/sitemap-index.xml",
         ]
         
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             for sitemap_url in sitemap_urls:
                 try:
                     response = await client.get(sitemap_url)
                     if response.status_code == 200:
-                        urls = self._parse_sitemap(response.text)
+                        urls = await self._parse_sitemap_recursive(response.text, client, base_domain)
                         if urls:
+                            logger.info(f"Discovered {len(urls)} URLs from sitemap(s)")
                             return urls
                 except Exception as e:
                     logger.debug(f"Could not fetch {sitemap_url}: {e}")
         
         return []
     
-    def _parse_sitemap(self, xml_content: str) -> List[str]:
-        """Parse sitemap XML and extract URLs"""
+    async def _parse_sitemap_recursive(self, xml_content: str, client: httpx.AsyncClient, base_domain: str) -> List[str]:
+        """Recursively parse sitemap XML and extract URLs (handles sitemap indexes)"""
         try:
             root = ET.fromstring(xml_content)
             
@@ -88,20 +94,101 @@ class DomainCrawler:
             
             urls = []
             
-            # Check if it's a sitemap index
-            for sitemap in root.findall('.//sm:sitemap/sm:loc', namespaces):
-                urls.append(sitemap.text)
+            # Check if it's a sitemap index (contains <sitemap> entries)
+            child_sitemaps = root.findall('.//sm:sitemap/sm:loc', namespaces)
+            if child_sitemaps:
+                logger.info(f"Found sitemap index with {len(child_sitemaps)} child sitemaps, fetching recursively...")
+                # Fetch child sitemaps in batches to avoid overwhelming server
+                import asyncio
+                batch_size = 5  # Fetch 5 sitemaps concurrently
+                
+                for i in range(0, len(child_sitemaps), batch_size):
+                    batch = child_sitemaps[i:i + batch_size]
+                    tasks = []
+                    for sitemap_elem in batch:
+                        child_sitemap_url = sitemap_elem.text
+                        if child_sitemap_url:
+                            tasks.append(self._fetch_and_parse_sitemap(child_sitemap_url, client))
+                    
+                    # Fetch batch of child sitemaps
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    
+                    # Collect URLs from this batch
+                    for result in results:
+                        if isinstance(result, list):
+                            urls.extend(result)
+                        elif isinstance(result, Exception):
+                            logger.debug(f"Failed to fetch child sitemap: {result}")
+                    
+                    logger.info(f"Processed {min(i + batch_size, len(child_sitemaps))}/{len(child_sitemaps)} child sitemaps, found {len(urls)} URLs so far...")
+                    
+                    # Small delay between batches to be respectful
+                    if i + batch_size < len(child_sitemaps):
+                        await asyncio.sleep(0.5)
+                
+                logger.info(f"Extracted {len(urls)} URLs from {len(child_sitemaps)} child sitemaps")
+                return urls
             
-            # Extract regular URLs
-            for url in root.findall('.//sm:url/sm:loc', namespaces):
-                if url.text:
-                    urls.append(url.text)
+            # Extract regular URLs from a regular sitemap
+            for url_elem in root.findall('.//sm:url/sm:loc', namespaces):
+                if url_elem.text:
+                    url = url_elem.text.strip()
+                    # Filter out non-page URLs
+                    if self._is_valid_page_url(url):
+                        urls.append(url)
             
             return urls
             
         except Exception as e:
             logger.debug(f"Failed to parse sitemap: {e}")
             return []
+    
+    async def _fetch_and_parse_sitemap(self, sitemap_url: str, client: httpx.AsyncClient) -> List[str]:
+        """Fetch a child sitemap and extract URLs from it"""
+        try:
+            response = await client.get(sitemap_url, timeout=30.0)
+            if response.status_code == 200:
+                # Parse this sitemap (which should be a regular sitemap, not an index)
+                root = ET.fromstring(response.text)
+                namespaces = {
+                    'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'
+                }
+                urls = []
+                
+                # Extract URLs
+                for url_elem in root.findall('.//sm:url/sm:loc', namespaces):
+                    if url_elem.text:
+                        url = url_elem.text.strip()
+                        # Filter out non-page URLs
+                        if self._is_valid_page_url(url):
+                            urls.append(url)
+                
+                return urls
+            return []
+        except Exception as e:
+            logger.debug(f"Failed to fetch child sitemap {sitemap_url}: {e}")
+            return []
+    
+    def _is_valid_page_url(self, url: str) -> bool:
+        """Check if URL is a valid page URL (not XML, images, etc.)"""
+        url_lower = url.lower()
+        # Exclude non-page file extensions
+        excluded_extensions = [
+            '.xml', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
+            '.pdf', '.zip', '.tar', '.gz', '.css', '.js', '.json',
+            '.ico', '.woff', '.woff2', '.ttf', '.eot'
+        ]
+        
+        # Exclude sitemap files
+        if '/sitemap' in url_lower and url_lower.endswith('.xml'):
+            return False
+        
+        # Check for excluded extensions
+        for ext in excluded_extensions:
+            if url_lower.endswith(ext):
+                return False
+        
+        return True
     
     async def _crawl_from_page(self, start_url: str, base_domain: str) -> Set[str]:
         """Crawl URLs from a starting page"""
