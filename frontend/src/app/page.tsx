@@ -22,6 +22,7 @@ export default function Home() {
     setResult(null)
 
     try {
+      console.log('Sending audit request to backend...')
       const response = await fetch('http://localhost:8000/api/v1/audit/page', {
         method: 'POST',
         headers: {
@@ -36,15 +37,19 @@ export default function Home() {
         })
       })
 
+      console.log('Response status:', response.status)
+
       if (!response.ok) {
-        throw new Error('Audit failed')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(`Audit failed: ${response.status} - ${JSON.stringify(errorData)}`)
       }
 
       const data = await response.json()
+      console.log('Audit result:', data)
       setResult(data)
-    } catch (err) {
-      setError('Failed to audit page. Make sure the backend is running on port 8000.')
-      console.error(err)
+    } catch (err: any) {
+      console.error('Audit error:', err)
+      setError(err.message || 'Failed to audit page. Make sure the backend is running on port 8000.')
     } finally {
       setLoading(false)
     }
