@@ -12,19 +12,21 @@ from .extractors.semantic import SemanticExtractor
 from .extractors.schema import SchemaExtractor
 from loguru import logger
 
-# Use Playwright for JS-heavy sites if enabled (default: false for MVP speed)
-USE_PLAYWRIGHT = os.getenv('USE_PLAYWRIGHT', 'false').lower() == 'true'
+# Fetcher selection strategy
+FETCHER_MODE = os.getenv('FETCHER_MODE', 'hybrid').lower()
 
-if USE_PLAYWRIGHT:
-    try:
-        from .fetcher import PageFetcher as Fetcher, PageData
-        logger.info("Using Playwright fetcher (supports JavaScript rendering)")
-    except ImportError as e:
-        logger.warning(f"Playwright not available ({e}), falling back to HTTP fetcher")
-        from .http_fetcher import HTTPFetcher as Fetcher, PageData
-else:
+if FETCHER_MODE == 'playwright':
+    # Always use Playwright
+    from .fetcher import PageFetcher as Fetcher, PageData
+    logger.info("Using Playwright fetcher (always renders JavaScript)")
+elif FETCHER_MODE == 'http':
+    # Always use HTTP (fast, no JS)
     from .http_fetcher import HTTPFetcher as Fetcher, PageData
-    logger.info("Using HTTP fetcher (fast, but no JavaScript support)")
+    logger.info("Using HTTP fetcher (fast, no JavaScript support)")
+else:
+    # Hybrid mode (default) - smart auto-detection
+    from .hybrid_fetcher import HybridFetcher as Fetcher, PageData
+    logger.info("Using Hybrid fetcher (auto-detects when JavaScript is needed)")
 
 
 @dataclass
