@@ -1,0 +1,248 @@
+{
+  "description": "Benchmark sites for AEO score calibration, categorized by expected performance",
+  "categories": {
+    "gold_standard": {
+      "description": "Sites that should score 75-90/100. Excellent AEO, widely cited by AI systems",
+      "expected_range": [75, 90],
+      "sites": [
+        {
+          "url": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+          "name": "Wikipedia - AI Article",
+          "expected_score": 78,
+          "reasoning": "Comprehensive content, extensive citations, authoritative, highly structured. Missing: JSON-LD schema. Strong in: answerability, authority, content quality",
+          "category_expectations": {
+            "answerability": 27,
+            "structured_data": 2,
+            "authority": 14,
+            "content_quality": 10,
+            "citationability": 10,
+            "technical": 9
+          }
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Python_(programming_language)",
+          "name": "Wikipedia - Python Article",
+          "expected_score": 80,
+          "reasoning": "Similar to AI article, comprehensive technical content with tables, infoboxes, citations",
+          "category_expectations": {
+            "answerability": 28,
+            "structured_data": 2,
+            "authority": 14,
+            "content_quality": 10,
+            "citationability": 10,
+            "technical": 9
+          }
+        },
+        {
+          "url": "https://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array",
+          "name": "Stack Overflow - Top Question",
+          "expected_score": 82,
+          "reasoning": "Direct answers, code examples, citations, excellent structure. High engagement signals",
+          "category_expectations": {
+            "answerability": 28,
+            "structured_data": 8,
+            "authority": 13,
+            "content_quality": 10,
+            "citationability": 10,
+            "technical": 9
+          }
+        },
+        {
+          "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+          "name": "MDN Web Docs - Array",
+          "expected_score": 85,
+          "reasoning": "Technical documentation gold standard. Clear structure, examples, comprehensive, well-maintained",
+          "category_expectations": {
+            "answerability": 29,
+            "structured_data": 10,
+            "authority": 14,
+            "content_quality": 10,
+            "citationability": 10,
+            "technical": 9
+          }
+        },
+        {
+          "url": "https://www.mayoclinic.org/diseases-conditions/diabetes/symptoms-causes/syc-20371444",
+          "name": "Mayo Clinic - Diabetes",
+          "expected_score": 87,
+          "reasoning": "Medical gold standard. Expert authorship, citations, structured data, comprehensive, authoritative",
+          "category_expectations": {
+            "answerability": 29,
+            "structured_data": 16,
+            "authority": 15,
+            "content_quality": 10,
+            "citationability": 10,
+            "technical": 9
+          }
+        }
+      ]
+    },
+    "excellent": {
+      "description": "Sites that should score 65-75/100. Very good AEO implementation",
+      "expected_range": [65, 75],
+      "sites": [
+        {
+          "url": "https://www.nytimes.com/section/technology",
+          "name": "New York Times - Technology",
+          "expected_score": 72,
+          "reasoning": "Professional journalism, proper authorship, dates, citations. May lack some technical SEO optimizations",
+          "category_expectations": {
+            "answerability": 24,
+            "structured_data": 12,
+            "authority": 15,
+            "content_quality": 9,
+            "citationability": 8,
+            "technical": 8
+          }
+        },
+        {
+          "url": "https://www.hubspot.com/marketing",
+          "name": "HubSpot - Marketing Hub",
+          "expected_score": 70,
+          "reasoning": "Well-optimized marketing content, structured data, clear CTAs, comprehensive guides",
+          "category_expectations": {
+            "answerability": 26,
+            "structured_data": 14,
+            "authority": 11,
+            "content_quality": 8,
+            "citationability": 7,
+            "technical": 9
+          }
+        },
+        {
+          "url": "https://css-tricks.com/snippets/css/a-guide-to-flexbox/",
+          "name": "CSS Tricks - Flexbox Guide",
+          "expected_score": 73,
+          "reasoning": "Comprehensive tutorial, code examples, visual aids, well-structured",
+          "category_expectations": {
+            "answerability": 27,
+            "structured_data": 10,
+            "authority": 10,
+            "content_quality": 10,
+            "citationability": 8,
+            "technical": 9
+          }
+        },
+        {
+          "url": "https://www.healthline.com/nutrition/foods-high-in-vitamin-d",
+          "name": "Healthline - Vitamin D Foods",
+          "expected_score": 75,
+          "reasoning": "Health content with medical review, citations, structured data, lists, comprehensive",
+          "category_expectations": {
+            "answerability": 28,
+            "structured_data": 14,
+            "authority": 12,
+            "content_quality": 9,
+            "citationability": 8,
+            "technical": 9
+          }
+        }
+      ]
+    },
+    "good": {
+      "description": "Sites that should score 50-65/100. Solid content but room for improvement",
+      "expected_range": [50, 65],
+      "sites": [
+        {
+          "url": "https://medium.com/@dan_abramov/smart-and-dumb-components-7ca2f9a7c7d0",
+          "name": "Medium - Popular Tech Article",
+          "expected_score": 58,
+          "reasoning": "Good content quality, author info, but limited structured data, fewer citations",
+          "category_expectations": {
+            "answerability": 20,
+            "structured_data": 8,
+            "authority": 10,
+            "content_quality": 9,
+            "citationability": 6,
+            "technical": 8
+          }
+        },
+        {
+          "url": "https://www.reddit.com/r/programming/",
+          "name": "Reddit - Programming Subreddit",
+          "expected_score": 52,
+          "reasoning": "Community content, good discussion, but lacks authorship, citations, structured approach",
+          "category_expectations": {
+            "answerability": 18,
+            "structured_data": 6,
+            "authority": 7,
+            "content_quality": 8,
+            "citationability": 5,
+            "technical": 8
+          }
+        },
+        {
+          "url": "https://www.w3schools.com/html/",
+          "name": "W3Schools - HTML Tutorial",
+          "expected_score": 62,
+          "reasoning": "Clear tutorials, examples, but simplified content, limited citations, basic structure",
+          "category_expectations": {
+            "answerability": 25,
+            "structured_data": 8,
+            "authority": 8,
+            "content_quality": 8,
+            "citationability": 6,
+            "technical": 9
+          }
+        }
+      ]
+    },
+    "average": {
+      "description": "Sites that should score 35-50/100. Basic implementation, many missing elements",
+      "expected_range": [35, 50],
+      "sites": [
+        {
+          "url": "https://www.blogger.com/",
+          "name": "Blogger Platform Page",
+          "expected_score": 42,
+          "reasoning": "Basic content, limited structure, minimal optimization, commercial focus",
+          "category_expectations": {
+            "answerability": 15,
+            "structured_data": 6,
+            "authority": 7,
+            "content_quality": 6,
+            "citationability": 4,
+            "technical": 7
+          }
+        }
+      ]
+    },
+    "poor": {
+      "description": "Sites that should score 15-35/100. Minimal AEO optimization",
+      "expected_range": [15, 35],
+      "sites": [
+        {
+          "url": "https://example.com/",
+          "name": "Example.com - Basic HTML",
+          "expected_score": 22,
+          "reasoning": "Minimal content, no optimization, placeholder site",
+          "category_expectations": {
+            "answerability": 8,
+            "structured_data": 2,
+            "authority": 2,
+            "content_quality": 4,
+            "citationability": 3,
+            "technical": 6
+          }
+        }
+      ]
+    }
+  },
+  "test_config": {
+    "max_pages_per_domain": 1,
+    "timeout_seconds": 30,
+    "retry_attempts": 2,
+    "delay_between_requests": 2
+  },
+  "scoring_insights": {
+    "notes": [
+      "Wikipedia should score high despite lack of JSON-LD (content quality outweighs schema)",
+      "Stack Overflow: Excellent Q&A format should score very high on answerability",
+      "Mayo Clinic: Medical content with expert authorship should score highest",
+      "MDN: Technical docs should score high on structure and clarity",
+      "Medium: Good content but platform limits structured data",
+      "Reddit: Community content, less authoritative but high engagement"
+    ]
+  }
+}
+

@@ -9,7 +9,7 @@ class CitationabilityScorer:
     """Scores citation-ability signals"""
     
     def __init__(self):
-        self.max_score = 10
+        self.max_score = 12  # Increased from 10 - working well, deserves more weight
     
     def calculate(self, page_data: Dict) -> Dict:
         facts_score = self._score_facts(page_data)

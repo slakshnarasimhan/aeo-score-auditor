@@ -67,7 +67,7 @@ class DomainCrawler:
             f"{base_domain}/sitemap-index.xml",
         ]
         
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, verify=False) as client:
             for sitemap_url in sitemap_urls:
                 try:
                     response = await client.get(sitemap_url)
@@ -195,7 +195,7 @@ class DomainCrawler:
         to_visit = [(start_url, 0)]  # (url, depth)
         discovered = set()
         
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, verify=False) as client:
             while to_visit and len(discovered) < self.max_pages:
                 url, depth = to_visit.pop(0)
                 

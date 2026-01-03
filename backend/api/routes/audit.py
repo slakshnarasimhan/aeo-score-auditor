@@ -298,6 +298,7 @@ class PDFRequest(BaseModel):
     """Request to generate PDF report"""
     audit_result: Dict[str, Any]
     audit_type: str = "page"  # "page" or "domain"
+    detailed: bool = False  # Include all page details in report
 
 
 @router.post("/pdf")
@@ -314,10 +315,10 @@ async def download_pdf_report(request: PDFRequest):
     try:
         from reporting.pdf_generator import generate_pdf_report
         
-        logger.info(f"Generating PDF report for {request.audit_type} audit")
+        logger.info(f"Generating {'detailed' if request.detailed else 'concise'} PDF report for {request.audit_type} audit")
         
         # Generate PDF
-        pdf_buffer = generate_pdf_report(request.audit_result, request.audit_type)
+        pdf_buffer = generate_pdf_report(request.audit_result, request.audit_type, request.detailed)
         
         # Create filename
         if request.audit_type == 'domain':

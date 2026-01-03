@@ -1,0 +1,1861 @@
+{
+  "summary": {
+    "total_sites_tested": 13,
+    "average_expected_score": 66.5,
+    "average_actual_score": 36.1,
+    "average_difference": -30.5,
+    "average_absolute_error": 30.5,
+    "accuracy_metrics": {
+      "within_5_points": {
+        "count": 0,
+        "percentage": 0.0
+      },
+      "within_10_points": {
+        "count": 1,
+        "percentage": 7.7
+      },
+      "within_15_points": {
+        "count": 2,
+        "percentage": 15.4
+      }
+    },
+    "systematic_bias": "underscoring"
+  },
+  "category_analysis": {
+    "gold_standard": {
+      "sites": [
+        "Wikipedia - AI Article",
+        "Wikipedia - Python Article",
+        "Stack Overflow - Top Question",
+        "MDN Web Docs - Array",
+        "Mayo Clinic - Diabetes"
+      ],
+      "differences": [
+        -19,
+        -14,
+        -17,
+        -30.5,
+        -36.7
+      ],
+      "expected_scores": [
+        78,
+        80,
+        82,
+        85,
+        87
+      ],
+      "actual_scores": [
+        59,
+        66,
+        65,
+        54.5,
+        50.3
+      ],
+      "average_expected": 82.4,
+      "average_actual": 59.0,
+      "average_difference": -23.4,
+      "average_abs_error": 23.4
+    },
+    "excellent": {
+      "sites": [
+        "New York Times - Technology",
+        "HubSpot - Marketing Hub",
+        "Healthline - Vitamin D Foods"
+      ],
+      "differences": [
+        -32.6,
+        -28.5,
+        -66.0
+      ],
+      "expected_scores": [
+        72,
+        70,
+        75
+      ],
+      "actual_scores": [
+        39.4,
+        41.5,
+        9.0
+      ],
+      "average_expected": 72.3,
+      "average_actual": 30.0,
+      "average_difference": -42.4,
+      "average_abs_error": 42.4
+    },
+    "good": {
+      "sites": [
+        "Medium - Popular Tech Article",
+        "Reddit - Programming Subreddit",
+        "W3Schools - HTML Tutorial"
+      ],
+      "differences": [
+        -48.0,
+        -25.8,
+        -26.9
+      ],
+      "expected_scores": [
+        58,
+        52,
+        62
+      ],
+      "actual_scores": [
+        10.0,
+        26.2,
+        35.1
+      ],
+      "average_expected": 57.3,
+      "average_actual": 23.8,
+      "average_difference": -33.6,
+      "average_abs_error": 33.6
+    },
+    "average": {
+      "sites": [
+        "Blogger Platform Page"
+      ],
+      "differences": [
+        -42
+      ],
+      "expected_scores": [
+        42
+      ],
+      "actual_scores": [
+        0
+      ],
+      "average_expected": 42.0,
+      "average_actual": 0.0,
+      "average_difference": -42.0,
+      "average_abs_error": 42.0
+    },
+    "poor": {
+      "sites": [
+        "Example.com - Basic HTML"
+      ],
+      "differences": [
+        -9.0
+      ],
+      "expected_scores": [
+        22
+      ],
+      "actual_scores": [
+        13.0
+      ],
+      "average_expected": 22.0,
+      "average_actual": 13.0,
+      "average_difference": -9.0,
+      "average_abs_error": 9.0
+    }
+  },
+  "scoring_issues": {
+    "categories_consistently_low": [
+      {
+        "category": "answerability",
+        "average_underscoring": -11.6
+      },
+      {
+        "category": "structured_data",
+        "average_underscoring": -8.3
+      }
+    ],
+    "categories_consistently_high": [],
+    "sites_with_largest_errors": [
+      {
+        "name": "Healthline - Vitamin D Foods",
+        "expected": 75,
+        "actual": 9.0,
+        "difference": -66.0
+      },
+      {
+        "name": "Medium - Popular Tech Article",
+        "expected": 58,
+        "actual": 10.0,
+        "difference": -48.0
+      },
+      {
+        "name": "Blogger Platform Page",
+        "expected": 42,
+        "actual": 0,
+        "difference": -42
+      },
+      {
+        "name": "Mayo Clinic - Diabetes",
+        "expected": 87,
+        "actual": 50.3,
+        "difference": -36.7
+      },
+      {
+        "name": "New York Times - Technology",
+        "expected": 72,
+        "actual": 39.4,
+        "difference": -32.6
+      }
+    ],
+    "scoring_component_issues": {}
+  },
+  "calibration_recommendations": {
+    "priority": [
+      {
+        "issue": "Systematic underscoring by 30.5 points on average",
+        "action": "Review all scoring formulas for excessive strictness or leniency",
+        "severity": "CRITICAL"
+      }
+    ],
+    "weight_adjustments": {
+      "answerability": {
+        "current_issue": "Underscoring by 11.6 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      },
+      "structured_data": {
+        "current_issue": "Underscoring by 8.3 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      }
+    },
+    "formula_changes": []
+  },
+  "detailed_results": [
+    {
+      "category": "gold_standard",
+      "name": "Wikipedia - AI Article",
+      "url": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+      "expected_score": 78,
+      "actual_score": 59,
+      "difference": -19,
+      "percentage_error": 24.358974358974358,
+      "expected_breakdown": {
+        "answerability": 27,
+        "structured_data": 2,
+        "authority": 14,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 19,
+          "max": 30,
+          "percentage": 63.3,
+          "sub_scores": {
+            "direct_answer_presence": 4,
+            "question_coverage": 8,
+            "answer_conciseness": 4,
+            "answer_block_formatting": 3
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 10,
+          "max": 18,
+          "percentage": 55.6,
+          "sub_scores": {
+            "domain_trust": 5,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 12,
+          "max": 15,
+          "percentage": 80.0,
+          "sub_scores": {
+            "content_depth": 7,
+            "unique_value_proposition": 4,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 10,
+          "max": 12,
+          "percentage": 83.3,
+          "sub_scores": {
+            "clear_statements_of_fact": 4,
+            "data_tables_lists": 3,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "C",
+      "timestamp": "2026-01-03T15:13:41.687012",
+      "category_differences": {
+        "answerability": {
+          "expected": 27,
+          "actual": 19,
+          "difference": -8,
+          "percentage_error": 29.629629629629626
+        },
+        "structured_data": {
+          "expected": 2,
+          "actual": 0,
+          "difference": -2,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 14,
+          "actual": 10,
+          "difference": -4,
+          "percentage_error": 28.57142857142857
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 12,
+          "difference": 2,
+          "percentage_error": 20.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 10,
+          "difference": 0,
+          "percentage_error": 0.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 8,
+          "difference": -1,
+          "percentage_error": 11.11111111111111
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "Wikipedia - Python Article",
+      "url": "https://en.wikipedia.org/wiki/Python_(programming_language)",
+      "expected_score": 80,
+      "actual_score": 66,
+      "difference": -14,
+      "percentage_error": 17.5,
+      "expected_breakdown": {
+        "answerability": 28,
+        "structured_data": 2,
+        "authority": 14,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 26,
+          "max": 30,
+          "percentage": 86.7,
+          "sub_scores": {
+            "direct_answer_presence": 10,
+            "question_coverage": 8,
+            "answer_conciseness": 4,
+            "answer_block_formatting": 4
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 10,
+          "max": 18,
+          "percentage": 55.6,
+          "sub_scores": {
+            "domain_trust": 5,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 12,
+          "max": 15,
+          "percentage": 80.0,
+          "sub_scores": {
+            "content_depth": 7,
+            "unique_value_proposition": 4,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 10,
+          "max": 12,
+          "percentage": 83.3,
+          "sub_scores": {
+            "clear_statements_of_fact": 4,
+            "data_tables_lists": 3,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "B-",
+      "timestamp": "2026-01-03T15:13:48.450289",
+      "category_differences": {
+        "answerability": {
+          "expected": 28,
+          "actual": 26,
+          "difference": -2,
+          "percentage_error": 7.142857142857142
+        },
+        "structured_data": {
+          "expected": 2,
+          "actual": 0,
+          "difference": -2,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 14,
+          "actual": 10,
+          "difference": -4,
+          "percentage_error": 28.57142857142857
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 12,
+          "difference": 2,
+          "percentage_error": 20.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 10,
+          "difference": 0,
+          "percentage_error": 0.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 8,
+          "difference": -1,
+          "percentage_error": 11.11111111111111
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "Stack Overflow - Top Question",
+      "url": "https://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array",
+      "expected_score": 82,
+      "actual_score": 65,
+      "difference": -17,
+      "percentage_error": 20.73170731707317,
+      "expected_breakdown": {
+        "answerability": 28,
+        "structured_data": 8,
+        "authority": 13,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 25,
+          "max": 30,
+          "percentage": 83.3,
+          "sub_scores": {
+            "direct_answer_presence": 9,
+            "question_coverage": 8,
+            "answer_conciseness": 4,
+            "answer_block_formatting": 4
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 10,
+          "max": 18,
+          "percentage": 55.6,
+          "sub_scores": {
+            "domain_trust": 5,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 12,
+          "max": 15,
+          "percentage": 80.0,
+          "sub_scores": {
+            "content_depth": 7,
+            "unique_value_proposition": 4,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 10,
+          "max": 12,
+          "percentage": 83.3,
+          "sub_scores": {
+            "clear_statements_of_fact": 4,
+            "data_tables_lists": 3,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "B-",
+      "timestamp": "2026-01-03T15:13:56.665145",
+      "category_differences": {
+        "answerability": {
+          "expected": 28,
+          "actual": 25,
+          "difference": -3,
+          "percentage_error": 10.714285714285714
+        },
+        "structured_data": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 13,
+          "actual": 10,
+          "difference": -3,
+          "percentage_error": 23.076923076923077
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 12,
+          "difference": 2,
+          "percentage_error": 20.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 10,
+          "difference": 0,
+          "percentage_error": 0.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 8,
+          "difference": -1,
+          "percentage_error": 11.11111111111111
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "MDN Web Docs - Array",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+      "expected_score": 85,
+      "actual_score": 54.5,
+      "difference": -30.5,
+      "percentage_error": 35.88235294117647,
+      "expected_breakdown": {
+        "answerability": 29,
+        "structured_data": 10,
+        "authority": 14,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 15.0,
+          "max": 30,
+          "percentage": 50.0,
+          "sub_scores": {
+            "direct_answer_presence": 4,
+            "question_coverage": 4.0,
+            "answer_conciseness": 4,
+            "answer_block_formatting": 3
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 10,
+          "max": 18,
+          "percentage": 55.6,
+          "sub_scores": {
+            "domain_trust": 5,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 12,
+          "max": 15,
+          "percentage": 80.0,
+          "sub_scores": {
+            "content_depth": 7,
+            "unique_value_proposition": 4,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 9.5,
+          "max": 12,
+          "percentage": 79.2,
+          "sub_scores": {
+            "clear_statements_of_fact": 4,
+            "data_tables_lists": 2.5,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "C-",
+      "timestamp": "2026-01-03T15:13:59.240831",
+      "category_differences": {
+        "answerability": {
+          "expected": 29,
+          "actual": 15.0,
+          "difference": -14.0,
+          "percentage_error": 48.275862068965516
+        },
+        "structured_data": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 14,
+          "actual": 10,
+          "difference": -4,
+          "percentage_error": 28.57142857142857
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 12,
+          "difference": 2,
+          "percentage_error": 20.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 9.5,
+          "difference": -0.5,
+          "percentage_error": 5.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 8,
+          "difference": -1,
+          "percentage_error": 11.11111111111111
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "Mayo Clinic - Diabetes",
+      "url": "https://www.mayoclinic.org/diseases-conditions/diabetes/symptoms-causes/syc-20371444",
+      "expected_score": 87,
+      "actual_score": 50.3,
+      "difference": -36.7,
+      "percentage_error": 42.18390804597701,
+      "expected_breakdown": {
+        "answerability": 29,
+        "structured_data": 16,
+        "authority": 15,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 16.6,
+          "max": 30,
+          "percentage": 55.3,
+          "sub_scores": {
+            "direct_answer_presence": 4,
+            "question_coverage": 5.6,
+            "answer_conciseness": 4,
+            "answer_block_formatting": 3
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 10,
+          "max": 18,
+          "percentage": 55.6,
+          "sub_scores": {
+            "domain_trust": 5,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 10,
+          "max": 15,
+          "percentage": 66.7,
+          "sub_scores": {
+            "content_depth": 7,
+            "unique_value_proposition": 2,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 5.7,
+          "max": 12,
+          "percentage": 47.5,
+          "sub_scores": {
+            "clear_statements_of_fact": 1.2,
+            "data_tables_lists": 1.5,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "C-",
+      "timestamp": "2026-01-03T15:14:01.772241",
+      "category_differences": {
+        "answerability": {
+          "expected": 29,
+          "actual": 16.6,
+          "difference": -12.399999999999999,
+          "percentage_error": 42.75862068965517
+        },
+        "structured_data": {
+          "expected": 16,
+          "actual": 0,
+          "difference": -16,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 15,
+          "actual": 10,
+          "difference": -5,
+          "percentage_error": 33.33333333333333
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 10,
+          "difference": 0,
+          "percentage_error": 0.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 5.7,
+          "difference": -4.3,
+          "percentage_error": 43.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 8,
+          "difference": -1,
+          "percentage_error": 11.11111111111111
+        }
+      }
+    },
+    {
+      "category": "excellent",
+      "name": "New York Times - Technology",
+      "url": "https://www.nytimes.com/section/technology",
+      "expected_score": 72,
+      "actual_score": 39.4,
+      "difference": -32.6,
+      "percentage_error": 45.27777777777778,
+      "expected_breakdown": {
+        "answerability": 24,
+        "structured_data": 12,
+        "authority": 15,
+        "content_quality": 9,
+        "citationability": 8,
+        "technical": 8
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 13.6,
+          "max": 30,
+          "percentage": 45.3,
+          "sub_scores": {
+            "direct_answer_presence": 3,
+            "question_coverage": 5.6,
+            "answer_conciseness": 3,
+            "answer_block_formatting": 2
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 8,
+          "max": 18,
+          "percentage": 44.4,
+          "sub_scores": {
+            "domain_trust": 5,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 1,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 5,
+          "max": 15,
+          "percentage": 33.3,
+          "sub_scores": {
+            "content_depth": 3,
+            "unique_value_proposition": 1,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 3.8,
+          "max": 12,
+          "percentage": 31.7,
+          "sub_scores": {
+            "clear_statements_of_fact": 0.0,
+            "data_tables_lists": 0.8,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 9,
+          "max": 10,
+          "percentage": 90.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 1
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "F",
+      "timestamp": "2026-01-03T15:14:04.099635",
+      "category_differences": {
+        "answerability": {
+          "expected": 24,
+          "actual": 13.6,
+          "difference": -10.4,
+          "percentage_error": 43.333333333333336
+        },
+        "structured_data": {
+          "expected": 12,
+          "actual": 0,
+          "difference": -12,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 15,
+          "actual": 8,
+          "difference": -7,
+          "percentage_error": 46.666666666666664
+        },
+        "content_quality": {
+          "expected": 9,
+          "actual": 5,
+          "difference": -4,
+          "percentage_error": 44.44444444444444
+        },
+        "citationability": {
+          "expected": 8,
+          "actual": 3.8,
+          "difference": -4.2,
+          "percentage_error": 52.5
+        },
+        "technical": {
+          "expected": 8,
+          "actual": 9,
+          "difference": 1,
+          "percentage_error": 12.5
+        }
+      }
+    },
+    {
+      "category": "excellent",
+      "name": "HubSpot - Marketing Hub",
+      "url": "https://www.hubspot.com/marketing",
+      "expected_score": 70,
+      "actual_score": 41.5,
+      "difference": -28.5,
+      "percentage_error": 40.714285714285715,
+      "expected_breakdown": {
+        "answerability": 26,
+        "structured_data": 14,
+        "authority": 11,
+        "content_quality": 8,
+        "citationability": 7,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 18,
+          "max": 30,
+          "percentage": 60.0,
+          "sub_scores": {
+            "direct_answer_presence": 4,
+            "question_coverage": 8,
+            "answer_conciseness": 4,
+            "answer_block_formatting": 2
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 5,
+          "max": 18,
+          "percentage": 27.8,
+          "sub_scores": {
+            "domain_trust": 0,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 8,
+          "max": 15,
+          "percentage": 53.3,
+          "sub_scores": {
+            "content_depth": 5,
+            "unique_value_proposition": 2,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 4.5,
+          "max": 12,
+          "percentage": 37.5,
+          "sub_scores": {
+            "clear_statements_of_fact": 0.0,
+            "data_tables_lists": 1.5,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 6,
+          "max": 10,
+          "percentage": 60.0,
+          "sub_scores": {
+            "page_performance": 1,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 1
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "F",
+      "timestamp": "2026-01-03T15:14:11.813710",
+      "category_differences": {
+        "answerability": {
+          "expected": 26,
+          "actual": 18,
+          "difference": -8,
+          "percentage_error": 30.76923076923077
+        },
+        "structured_data": {
+          "expected": 14,
+          "actual": 0,
+          "difference": -14,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 11,
+          "actual": 5,
+          "difference": -6,
+          "percentage_error": 54.54545454545454
+        },
+        "content_quality": {
+          "expected": 8,
+          "actual": 8,
+          "difference": 0,
+          "percentage_error": 0.0
+        },
+        "citationability": {
+          "expected": 7,
+          "actual": 4.5,
+          "difference": -2.5,
+          "percentage_error": 35.714285714285715
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 6,
+          "difference": -3,
+          "percentage_error": 33.33333333333333
+        }
+      }
+    },
+    {
+      "category": "excellent",
+      "name": "Healthline - Vitamin D Foods",
+      "url": "https://www.healthline.com/nutrition/foods-high-in-vitamin-d",
+      "expected_score": 75,
+      "actual_score": 9.0,
+      "difference": -66.0,
+      "percentage_error": 88.0,
+      "expected_breakdown": {
+        "answerability": 28,
+        "structured_data": 14,
+        "authority": 12,
+        "content_quality": 9,
+        "citationability": 8,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 0.0,
+          "max": 30,
+          "percentage": 0.0,
+          "sub_scores": {
+            "direct_answer_presence": 0,
+            "question_coverage": 0.0,
+            "answer_conciseness": 0,
+            "answer_block_formatting": 0
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 2,
+          "max": 18,
+          "percentage": 11.1,
+          "sub_scores": {
+            "domain_trust": 0,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 0,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 1,
+          "max": 15,
+          "percentage": 6.7,
+          "sub_scores": {
+            "content_depth": 0,
+            "unique_value_proposition": 0,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 3.0,
+          "max": 12,
+          "percentage": 25.0,
+          "sub_scores": {
+            "clear_statements_of_fact": 0.0,
+            "data_tables_lists": 0.0,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 3,
+          "max": 10,
+          "percentage": 30.0,
+          "sub_scores": {
+            "page_performance": 3,
+            "mobile_friendliness": 0,
+            "semantic_html": 0,
+            "internal_linking": 0,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "F",
+      "timestamp": "2026-01-03T15:18:39.588200",
+      "category_differences": {
+        "answerability": {
+          "expected": 28,
+          "actual": 0.0,
+          "difference": -28.0,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 14,
+          "actual": 0,
+          "difference": -14,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 12,
+          "actual": 2,
+          "difference": -10,
+          "percentage_error": 83.33333333333334
+        },
+        "content_quality": {
+          "expected": 9,
+          "actual": 1,
+          "difference": -8,
+          "percentage_error": 88.88888888888889
+        },
+        "citationability": {
+          "expected": 8,
+          "actual": 3.0,
+          "difference": -5.0,
+          "percentage_error": 62.5
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 3,
+          "difference": -6,
+          "percentage_error": 66.66666666666666
+        }
+      }
+    },
+    {
+      "category": "good",
+      "name": "Medium - Popular Tech Article",
+      "url": "https://medium.com/@dan_abramov/smart-and-dumb-components-7ca2f9a7c7d0",
+      "expected_score": 58,
+      "actual_score": 10.0,
+      "difference": -48.0,
+      "percentage_error": 82.75862068965517,
+      "expected_breakdown": {
+        "answerability": 20,
+        "structured_data": 8,
+        "authority": 10,
+        "content_quality": 9,
+        "citationability": 6,
+        "technical": 8
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 0.0,
+          "max": 30,
+          "percentage": 0.0,
+          "sub_scores": {
+            "direct_answer_presence": 0,
+            "question_coverage": 0.0,
+            "answer_conciseness": 0,
+            "answer_block_formatting": 0
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 2,
+          "max": 18,
+          "percentage": 11.1,
+          "sub_scores": {
+            "domain_trust": 0,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 0,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 1,
+          "max": 15,
+          "percentage": 6.7,
+          "sub_scores": {
+            "content_depth": 0,
+            "unique_value_proposition": 0,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 3.0,
+          "max": 12,
+          "percentage": 25.0,
+          "sub_scores": {
+            "clear_statements_of_fact": 0.0,
+            "data_tables_lists": 0.0,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 4,
+          "max": 10,
+          "percentage": 40.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 0,
+            "internal_linking": 0,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "F",
+      "timestamp": "2026-01-03T15:18:41.719290",
+      "category_differences": {
+        "answerability": {
+          "expected": 20,
+          "actual": 0.0,
+          "difference": -20.0,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 10,
+          "actual": 2,
+          "difference": -8,
+          "percentage_error": 80.0
+        },
+        "content_quality": {
+          "expected": 9,
+          "actual": 1,
+          "difference": -8,
+          "percentage_error": 88.88888888888889
+        },
+        "citationability": {
+          "expected": 6,
+          "actual": 3.0,
+          "difference": -3.0,
+          "percentage_error": 50.0
+        },
+        "technical": {
+          "expected": 8,
+          "actual": 4,
+          "difference": -4,
+          "percentage_error": 50.0
+        }
+      }
+    },
+    {
+      "category": "good",
+      "name": "Reddit - Programming Subreddit",
+      "url": "https://www.reddit.com/r/programming/",
+      "expected_score": 52,
+      "actual_score": 26.2,
+      "difference": -25.8,
+      "percentage_error": 49.61538461538461,
+      "expected_breakdown": {
+        "answerability": 18,
+        "structured_data": 6,
+        "authority": 7,
+        "content_quality": 8,
+        "citationability": 5,
+        "technical": 8
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 7.8,
+          "max": 30,
+          "percentage": 26.0,
+          "sub_scores": {
+            "direct_answer_presence": 0,
+            "question_coverage": 4.8,
+            "answer_conciseness": 1,
+            "answer_block_formatting": 2
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 5,
+          "max": 18,
+          "percentage": 27.8,
+          "sub_scores": {
+            "domain_trust": 0,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 4,
+          "max": 15,
+          "percentage": 26.7,
+          "sub_scores": {
+            "content_depth": 3,
+            "unique_value_proposition": 0,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 3.4,
+          "max": 12,
+          "percentage": 28.3,
+          "sub_scores": {
+            "clear_statements_of_fact": 0.0,
+            "data_tables_lists": 0.4,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 6,
+          "max": 10,
+          "percentage": 60.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 0,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "F",
+      "timestamp": "2026-01-03T15:18:44.693023",
+      "category_differences": {
+        "answerability": {
+          "expected": 18,
+          "actual": 7.8,
+          "difference": -10.2,
+          "percentage_error": 56.666666666666664
+        },
+        "structured_data": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 7,
+          "actual": 5,
+          "difference": -2,
+          "percentage_error": 28.57142857142857
+        },
+        "content_quality": {
+          "expected": 8,
+          "actual": 4,
+          "difference": -4,
+          "percentage_error": 50.0
+        },
+        "citationability": {
+          "expected": 5,
+          "actual": 3.4,
+          "difference": -1.6,
+          "percentage_error": 32.0
+        },
+        "technical": {
+          "expected": 8,
+          "actual": 6,
+          "difference": -2,
+          "percentage_error": 25.0
+        }
+      }
+    },
+    {
+      "category": "good",
+      "name": "W3Schools - HTML Tutorial",
+      "url": "https://www.w3schools.com/html/",
+      "expected_score": 62,
+      "actual_score": 35.1,
+      "difference": -26.9,
+      "percentage_error": 43.387096774193544,
+      "expected_breakdown": {
+        "answerability": 25,
+        "structured_data": 8,
+        "authority": 8,
+        "content_quality": 8,
+        "citationability": 6,
+        "technical": 9
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 12.0,
+          "max": 30,
+          "percentage": 40.0,
+          "sub_scores": {
+            "direct_answer_presence": 3,
+            "question_coverage": 4.0,
+            "answer_conciseness": 2,
+            "answer_block_formatting": 3
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 5,
+          "max": 18,
+          "percentage": 27.8,
+          "sub_scores": {
+            "domain_trust": 0,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 3,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 6,
+          "max": 15,
+          "percentage": 40.0,
+          "sub_scores": {
+            "content_depth": 5,
+            "unique_value_proposition": 0,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 4.1,
+          "max": 12,
+          "percentage": 34.2,
+          "sub_scores": {
+            "clear_statements_of_fact": 0.9,
+            "data_tables_lists": 0.2,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 2,
+            "internal_linking": 2,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "F",
+      "timestamp": "2026-01-03T15:18:47.147672",
+      "category_differences": {
+        "answerability": {
+          "expected": 25,
+          "actual": 12.0,
+          "difference": -13.0,
+          "percentage_error": 52.0
+        },
+        "structured_data": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 8,
+          "actual": 5,
+          "difference": -3,
+          "percentage_error": 37.5
+        },
+        "content_quality": {
+          "expected": 8,
+          "actual": 6,
+          "difference": -2,
+          "percentage_error": 25.0
+        },
+        "citationability": {
+          "expected": 6,
+          "actual": 4.1,
+          "difference": -1.9000000000000004,
+          "percentage_error": 31.66666666666667
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 8,
+          "difference": -1,
+          "percentage_error": 11.11111111111111
+        }
+      }
+    },
+    {
+      "category": "average",
+      "name": "Blogger Platform Page",
+      "url": "https://www.blogger.com/",
+      "expected_score": 42,
+      "actual_score": 0,
+      "difference": -42,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 15,
+        "structured_data": 6,
+        "authority": 7,
+        "content_quality": 6,
+        "citationability": 4,
+        "technical": 7
+      },
+      "actual_breakdown": {},
+      "grade": "F",
+      "timestamp": "2026-01-03T15:19:04.327244",
+      "category_differences": {
+        "answerability": {
+          "expected": 15,
+          "actual": 0,
+          "difference": -15,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 7,
+          "actual": 0,
+          "difference": -7,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 4,
+          "actual": 0,
+          "difference": -4,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 7,
+          "actual": 0,
+          "difference": -7,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "poor",
+      "name": "Example.com - Basic HTML",
+      "url": "https://example.com/",
+      "expected_score": 22,
+      "actual_score": 13.0,
+      "difference": -9.0,
+      "percentage_error": 40.909090909090914,
+      "expected_breakdown": {
+        "answerability": 8,
+        "structured_data": 2,
+        "authority": 2,
+        "content_quality": 4,
+        "citationability": 3,
+        "technical": 6
+      },
+      "actual_breakdown": {
+        "answerability": {
+          "score": 1.0,
+          "max": 30,
+          "percentage": 3.3,
+          "sub_scores": {
+            "direct_answer_presence": 1,
+            "question_coverage": 0.0,
+            "answer_conciseness": 0,
+            "answer_block_formatting": 0
+          }
+        },
+        "structured_data": {
+          "score": 0,
+          "max": 15,
+          "percentage": 0.0,
+          "sub_scores": {
+            "basic_presence": 0,
+            "schema_quality": 0,
+            "advanced_features": 0,
+            "social_metadata": 0
+          }
+        },
+        "authority": {
+          "score": 3,
+          "max": 18,
+          "percentage": 16.7,
+          "sub_scores": {
+            "domain_trust": 0,
+            "author_information": 0,
+            "publication_date": 0,
+            "citations_sources": 1,
+            "security_https": 2
+          }
+        },
+        "content_quality": {
+          "score": 1,
+          "max": 15,
+          "percentage": 6.7,
+          "sub_scores": {
+            "content_depth": 0,
+            "unique_value_proposition": 0,
+            "freshness": 1
+          }
+        },
+        "citationability": {
+          "score": 3.0,
+          "max": 12,
+          "percentage": 25.0,
+          "sub_scores": {
+            "clear_statements_of_fact": 0.0,
+            "data_tables_lists": 0.0,
+            "https_security": 2,
+            "no_intrusive_elements": 1
+          }
+        },
+        "technical": {
+          "score": 5,
+          "max": 10,
+          "percentage": 50.0,
+          "sub_scores": {
+            "page_performance": 4,
+            "mobile_friendliness": 0,
+            "semantic_html": 1,
+            "internal_linking": 0,
+            "meta_description": 0
+          }
+        },
+        "ai_citation": {
+          "score": 0,
+          "max": 5,
+          "percentage": 0,
+          "note": "AI citation analysis not performed"
+        }
+      },
+      "grade": "F",
+      "timestamp": "2026-01-03T15:19:06.451600",
+      "category_differences": {
+        "answerability": {
+          "expected": 8,
+          "actual": 1.0,
+          "difference": -7.0,
+          "percentage_error": 87.5
+        },
+        "structured_data": {
+          "expected": 2,
+          "actual": 0,
+          "difference": -2,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 2,
+          "actual": 3,
+          "difference": 1,
+          "percentage_error": 50.0
+        },
+        "content_quality": {
+          "expected": 4,
+          "actual": 1,
+          "difference": -3,
+          "percentage_error": 75.0
+        },
+        "citationability": {
+          "expected": 3,
+          "actual": 3.0,
+          "difference": 0.0,
+          "percentage_error": 0.0
+        },
+        "technical": {
+          "expected": 6,
+          "actual": 5,
+          "difference": -1,
+          "percentage_error": 16.666666666666664
+        }
+      }
+    }
+  ],
+  "timestamp": "2026-01-03T15:19:08.455480"
+}

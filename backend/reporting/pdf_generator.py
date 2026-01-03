@@ -8,9 +8,10 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, ListFlowable, ListItem
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from loguru import logger
+from reporting.recommendation_generator import RecommendationGenerator
 
 
 class PDFReportGenerator:
@@ -19,6 +20,7 @@ class PDFReportGenerator:
     def __init__(self):
         self.styles = getSampleStyleSheet()
         self._setup_custom_styles()
+        self.rec_generator = RecommendationGenerator()
     
     def _setup_custom_styles(self):
         """Setup custom paragraph styles"""
@@ -64,13 +66,14 @@ class PDFReportGenerator:
                 fontName='Helvetica-Bold'
             ))
     
-    def generate_report(self, audit_result: Dict[str, Any], audit_type: str = 'page') -> BytesIO:
+    def generate_report(self, audit_result: Dict[str, Any], audit_type: str = 'page', detailed: bool = False) -> BytesIO:
         """
         Generate PDF report from audit results
         
         Args:
             audit_result: Complete audit result dictionary
             audit_type: 'page' or 'domain'
+            detailed: If True, includes all page details and subsection breakdowns
             
         Returns:
             BytesIO buffer with PDF content
@@ -213,27 +216,207 @@ class PDFReportGenerator:
             
             story.append(Spacer(1, 0.2*inch))
         
+        # Detailed page-by-page breakdown (for domain audits with detailed=True)
+        if audit_type == 'domain' and detailed:
+            page_results = audit_result.get('page_results', [])
+            if page_results:
+                story.append(PageBreak())
+                detailed_heading = Paragraph("<b>Detailed Page-by-Page Analysis</b>", self.styles['ReportHeading'])
+                story.append(detailed_heading)
+                story.append(Spacer(1, 0.2*inch))
+                
+                info_text = Paragraph(
+                    f"<i>This section contains detailed scoring breakdown for all {len(page_results)} audited pages.</i>",
+                    self.styles['Normal']
+                )
+                story.append(info_text)
+                story.append(Spacer(1, 0.3*inch))
+                
+                for idx, page_result in enumerate(page_results, 1):
+                    # Page header
+                    page_url = page_result.get('url', 'N/A')
+                    page_score = page_result.get('overall_score', 0)
+                    page_grade = page_result.get('grade', 'F')
+                    
+                    page_header = Paragraph(
+                        f"<b>Page {idx}: {page_url}</b><br/>"
+                        f"Score: {page_score}/100 | Grade: {page_grade}",
+                        self.styles['ReportSubHeading']
+                    )
+                    story.append(page_header)
+                    story.append(Spacer(1, 0.1*inch))
+                    
+                    # Page category breakdown
+                    page_breakdown = page_result.get('breakdown', {})
+                    if page_breakdown:
+                        page_data = [['Category', 'Score', '%']]
+                        for category, data in page_breakdown.items():
+                            cat_name = category.replace('_', ' ').title()
+                            score = data.get('score', 0)
+                            max_score = data.get('max', 100)
+                            percentage = data.get('percentage', 0)
+                            page_data.append([
+                                cat_name,
+                                f"{score}/{max_score}",
+                                f"{percentage:.1f}%"
+                            ])
+                        
+                        page_table = Table(page_data, colWidths=[3*inch, 1.5*inch, 1.5*inch])
+                        page_table.setStyle(TableStyle([
+                            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9ca3af')),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0, 0), (-1, -1), 8),
+                            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')])
+                        ]))
+                        story.append(page_table)
+                        story.append(Spacer(1, 0.1*inch))
+                        
+                        # Sub-scores for each category (detailed view)
+                        for category, data in page_breakdown.items():
+                            sub_scores = data.get('sub_scores', {})
+                            if sub_scores:
+                                cat_name = category.replace('_', ' ').title()
+                                sub_header = Paragraph(
+                                    f"<i>{cat_name} Details:</i>",
+                                    ParagraphStyle(name='SubDetail', parent=self.styles['Normal'], 
+                                                 fontSize=8, textColor=colors.HexColor('#6b7280'))
+                                )
+                                story.append(sub_header)
+                                
+                                sub_data = []
+                                for sub_cat, sub_score in sub_scores.items():
+                                    sub_name = sub_cat.replace('_', ' ').title()
+                                    sub_data.append([f"  • {sub_name}", str(sub_score)])
+                                
+                                if sub_data:
+                                    sub_table = Table(sub_data, colWidths=[4*inch, 1*inch])
+                                    sub_table.setStyle(TableStyle([
+                                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                                        ('FONTSIZE', (0, 0), (-1, -1), 7),
+                                        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#4b5563')),
+                                        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                                        ('TOPPADDING', (0, 0), (-1, -1), 3),
+                                    ]))
+                                    story.append(sub_table)
+                                    story.append(Spacer(1, 0.05*inch))
+                        
+                        # Generate page-specific recommendations
+                        page_recommendations = self.rec_generator.generate_recommendations(page_result, top_n=3)
+                        if page_recommendations:
+                            rec_header = Paragraph(
+                                "<b>💡 Top Improvement Suggestions:</b>",
+                                ParagraphStyle(name='RecHeader', parent=self.styles['Normal'],
+                                             fontSize=9, textColor=colors.HexColor('#059669'),
+                                             fontName='Helvetica-Bold', spaceAfter=4)
+                            )
+                            story.append(Spacer(1, 0.1*inch))
+                            story.append(rec_header)
+                            
+                            for rec in page_recommendations:
+                                # Recommendation title
+                                rec_title = Paragraph(
+                                    f"<b>{rec['title']}</b> ({rec['percentage']:.0f}% complete)",
+                                    ParagraphStyle(name='RecTitle', parent=self.styles['Normal'],
+                                                 fontSize=8, textColor=colors.HexColor('#dc2626'),
+                                                 fontName='Helvetica-Bold')
+                                )
+                                story.append(rec_title)
+                                
+                                # Recommendation tips (bullet list)
+                                tips = rec.get('tips', [])
+                                if tips:
+                                    for tip in tips:
+                                        tip_para = Paragraph(
+                                            f"  • {tip}",
+                                            ParagraphStyle(name='RecTip', parent=self.styles['Normal'],
+                                                         fontSize=7, textColor=colors.HexColor('#374151'),
+                                                         leftIndent=10, spaceAfter=2)
+                                        )
+                                        story.append(tip_para)
+                                
+                                story.append(Spacer(1, 0.08*inch))
+                    
+                    story.append(Spacer(1, 0.2*inch))
+                    
+                    # Add page break every 3 pages for readability
+                    if idx % 3 == 0 and idx < len(page_results):
+                        story.append(PageBreak())
+        
         # Recommendations (if available)
-        recommendations = audit_result.get('recommendations', [])
-        if recommendations:
+        # Generate detailed recommendations using our recommendation engine
+        detailed_recommendations = self.rec_generator.generate_recommendations(audit_result, top_n=10)
+        
+        # Fallback to simple recommendations if detailed ones aren't available
+        if not detailed_recommendations:
+            detailed_recommendations = audit_result.get('recommendations', [])
+        
+        if detailed_recommendations:
             story.append(PageBreak())
-            rec_heading = Paragraph("<b>Recommendations</b>", self.styles['ReportHeading'])
+            rec_heading = Paragraph("<b>💡 Prioritized Improvement Recommendations</b>", self.styles['ReportHeading'])
             story.append(rec_heading)
+            story.append(Spacer(1, 0.1*inch))
+            
+            intro_text = Paragraph(
+                "<i>Based on your audit results, here are the top recommendations to improve your AEO score, "
+                "prioritized by potential impact:</i>",
+                self.styles['Normal']
+            )
+            story.append(intro_text)
             story.append(Spacer(1, 0.2*inch))
             
-            for i, rec in enumerate(recommendations[:10], 1):  # Top 10
-                rec_title = rec.get('title', 'Improvement')
-                priority = rec.get('priority', 0)
-                current = rec.get('current_score', 0)
-                max_s = rec.get('max_score', 100)
-                potential = rec.get('potential_gain', 0)
-                
-                rec_text = f"<b>{i}. {rec_title}</b><br/>"
-                rec_text += f"Current: {current}/{max_s} | Potential Gain: {potential} points | Priority: {priority}%"
-                
-                rec_para = Paragraph(rec_text, self.styles['Normal'])
-                story.append(rec_para)
-                story.append(Spacer(1, 0.15*inch))
+            for i, rec in enumerate(detailed_recommendations[:10], 1):
+                # Check if this is a detailed recommendation with tips
+                if 'tips' in rec:
+                    rec_title = rec.get('title', 'Improvement')
+                    percentage = rec.get('percentage', 0)
+                    current = rec.get('current_score', 0)
+                    max_s = rec.get('max_score', 100)
+                    
+                    # Recommendation header
+                    rec_header = f"<b>{i}. {rec_title}</b><br/>"
+                    rec_header += f"<font color='#dc2626'>Current: {current}/{max_s} ({percentage:.0f}% complete)</font>"
+                    
+                    rec_para = Paragraph(rec_header, self.styles['Normal'])
+                    story.append(rec_para)
+                    story.append(Spacer(1, 0.05*inch))
+                    
+                    # Action items
+                    tips = rec.get('tips', [])
+                    if tips:
+                        action_label = Paragraph(
+                            "<b>Action Items:</b>",
+                            ParagraphStyle(name='ActionLabel', parent=self.styles['Normal'],
+                                         fontSize=9, textColor=colors.HexColor('#059669'))
+                        )
+                        story.append(action_label)
+                        
+                        for tip in tips:
+                            tip_para = Paragraph(
+                                f"  • {tip}",
+                                ParagraphStyle(name='TipItem', parent=self.styles['Normal'],
+                                             fontSize=9, leftIndent=15, spaceAfter=3)
+                            )
+                            story.append(tip_para)
+                    
+                    story.append(Spacer(1, 0.15*inch))
+                else:
+                    # Fallback to simple format
+                    rec_title = rec.get('title', 'Improvement')
+                    priority = rec.get('priority', 0)
+                    current = rec.get('current_score', 0)
+                    max_s = rec.get('max_score', 100)
+                    potential = rec.get('potential_gain', 0)
+                    
+                    rec_text = f"<b>{i}. {rec_title}</b><br/>"
+                    rec_text += f"Current: {current}/{max_s} | Potential Gain: {potential} points | Priority: {priority}%"
+                    
+                    rec_para = Paragraph(rec_text, self.styles['Normal'])
+                    story.append(rec_para)
+                    story.append(Spacer(1, 0.15*inch))
         
         # Domain-specific: Best/Worst pages
         if audit_type == 'domain':
@@ -283,8 +466,8 @@ class PDFReportGenerator:
         return buffer
 
 
-def generate_pdf_report(audit_result: Dict[str, Any], audit_type: str = 'page') -> BytesIO:
+def generate_pdf_report(audit_result: Dict[str, Any], audit_type: str = 'page', detailed: bool = False) -> BytesIO:
     """Convenience function to generate PDF report"""
     generator = PDFReportGenerator()
-    return generator.generate_report(audit_result, audit_type)
+    return generator.generate_report(audit_result, audit_type, detailed)
 

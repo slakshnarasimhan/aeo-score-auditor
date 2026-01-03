@@ -63,6 +63,7 @@ export default function Home() {
   const [domainResult, setDomainResult] = useState<DomainAuditResult | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [detailViewCategory, setDetailViewCategory] = useState<string | null>(null);
+  const [detailedPDF, setDetailedPDF] = useState<boolean>(false);
   
   // Progress tracking
   const [progress, setProgress] = useState<ProgressUpdate | null>(null);
@@ -271,7 +272,8 @@ export default function Home() {
         },
         body: JSON.stringify({
           audit_result: result,
-          audit_type: type
+          audit_type: type,
+          detailed: detailedPDF
         }),
       });
 
@@ -463,13 +465,24 @@ export default function Home() {
           <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-xl">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-3xl font-bold text-gray-800">📊 Audit Results</h2>
-              <button
-                onClick={() => downloadPDF(auditResult, 'page')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
-              >
-                <span>📥</span>
-                <span>Download PDF</span>
-              </button>
+              <div className="flex flex-col items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={detailedPDF}
+                    onChange={(e) => setDetailedPDF(e.target.checked)}
+                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                  />
+                  <span>Detailed PDF (includes all subsections)</span>
+                </label>
+                <button
+                  onClick={() => downloadPDF(auditResult, 'page')}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
+                >
+                  <span>📥</span>
+                  <span>Download PDF</span>
+                </button>
+              </div>
             </div>
             <div className="flex items-baseline gap-4 mb-6">
               <span className="text-5xl font-extrabold text-gray-900">{auditResult.overall_score}</span>
@@ -530,13 +543,24 @@ export default function Home() {
           <div className="mt-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-3xl font-bold text-gray-800">🌐 Domain Audit Results</h2>
-              <button
-                onClick={() => downloadPDF(domainResult, 'domain')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
-              >
-                <span>📥</span>
-                <span>Download PDF</span>
-              </button>
+              <div className="flex flex-col items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={detailedPDF}
+                    onChange={(e) => setDetailedPDF(e.target.checked)}
+                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                  />
+                  <span>Detailed PDF (includes all pages)</span>
+                </label>
+                <button
+                  onClick={() => downloadPDF(domainResult, 'domain')}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
+                >
+                  <span>📥</span>
+                  <span>Download PDF</span>
+                </button>
+              </div>
             </div>
             
             <div className="mb-6 p-4 bg-white rounded-lg shadow">

@@ -1,0 +1,1009 @@
+{
+  "summary": {
+    "total_sites_tested": 13,
+    "average_expected_score": 66.5,
+    "average_actual_score": 0.0,
+    "average_difference": -66.5,
+    "average_absolute_error": 66.5,
+    "accuracy_metrics": {
+      "within_5_points": {
+        "count": 0,
+        "percentage": 0.0
+      },
+      "within_10_points": {
+        "count": 0,
+        "percentage": 0.0
+      },
+      "within_15_points": {
+        "count": 0,
+        "percentage": 0.0
+      }
+    },
+    "systematic_bias": "underscoring"
+  },
+  "category_analysis": {
+    "gold_standard": {
+      "sites": [
+        "Wikipedia - AI Article",
+        "Wikipedia - Python Article",
+        "Stack Overflow - Top Question",
+        "MDN Web Docs - Array",
+        "Mayo Clinic - Diabetes"
+      ],
+      "differences": [
+        -78,
+        -80,
+        -82,
+        -85,
+        -87
+      ],
+      "expected_scores": [
+        78,
+        80,
+        82,
+        85,
+        87
+      ],
+      "actual_scores": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "average_expected": 82.4,
+      "average_actual": 0.0,
+      "average_difference": -82.4,
+      "average_abs_error": 82.4
+    },
+    "excellent": {
+      "sites": [
+        "New York Times - Technology",
+        "HubSpot - Marketing Hub",
+        "Healthline - Vitamin D Foods"
+      ],
+      "differences": [
+        -72,
+        -70,
+        -75
+      ],
+      "expected_scores": [
+        72,
+        70,
+        75
+      ],
+      "actual_scores": [
+        0,
+        0,
+        0
+      ],
+      "average_expected": 72.3,
+      "average_actual": 0.0,
+      "average_difference": -72.3,
+      "average_abs_error": 72.3
+    },
+    "good": {
+      "sites": [
+        "Medium - Popular Tech Article",
+        "Reddit - Programming Subreddit",
+        "W3Schools - HTML Tutorial"
+      ],
+      "differences": [
+        -58,
+        -52,
+        -62
+      ],
+      "expected_scores": [
+        58,
+        52,
+        62
+      ],
+      "actual_scores": [
+        0,
+        0,
+        0
+      ],
+      "average_expected": 57.3,
+      "average_actual": 0.0,
+      "average_difference": -57.3,
+      "average_abs_error": 57.3
+    },
+    "average": {
+      "sites": [
+        "Blogger Platform Page"
+      ],
+      "differences": [
+        -42
+      ],
+      "expected_scores": [
+        42
+      ],
+      "actual_scores": [
+        0
+      ],
+      "average_expected": 42.0,
+      "average_actual": 0.0,
+      "average_difference": -42.0,
+      "average_abs_error": 42.0
+    },
+    "poor": {
+      "sites": [
+        "Example.com - Basic HTML"
+      ],
+      "differences": [
+        -22
+      ],
+      "expected_scores": [
+        22
+      ],
+      "actual_scores": [
+        0
+      ],
+      "average_expected": 22.0,
+      "average_actual": 0.0,
+      "average_difference": -22.0,
+      "average_abs_error": 22.0
+    }
+  },
+  "scoring_issues": {
+    "categories_consistently_low": [
+      {
+        "category": "answerability",
+        "average_underscoring": -23.5
+      },
+      {
+        "category": "structured_data",
+        "average_underscoring": -8.3
+      },
+      {
+        "category": "authority",
+        "average_underscoring": -10.9
+      },
+      {
+        "category": "content_quality",
+        "average_underscoring": -8.5
+      },
+      {
+        "category": "citationability",
+        "average_underscoring": -7.5
+      },
+      {
+        "category": "technical",
+        "average_underscoring": -8.4
+      }
+    ],
+    "categories_consistently_high": [],
+    "sites_with_largest_errors": [
+      {
+        "name": "Mayo Clinic - Diabetes",
+        "expected": 87,
+        "actual": 0,
+        "difference": -87
+      },
+      {
+        "name": "MDN Web Docs - Array",
+        "expected": 85,
+        "actual": 0,
+        "difference": -85
+      },
+      {
+        "name": "Stack Overflow - Top Question",
+        "expected": 82,
+        "actual": 0,
+        "difference": -82
+      },
+      {
+        "name": "Wikipedia - Python Article",
+        "expected": 80,
+        "actual": 0,
+        "difference": -80
+      },
+      {
+        "name": "Wikipedia - AI Article",
+        "expected": 78,
+        "actual": 0,
+        "difference": -78
+      }
+    ],
+    "scoring_component_issues": {}
+  },
+  "calibration_recommendations": {
+    "priority": [
+      {
+        "issue": "Systematic underscoring by 66.5 points on average",
+        "action": "Review all scoring formulas for excessive strictness or leniency",
+        "severity": "CRITICAL"
+      }
+    ],
+    "weight_adjustments": {
+      "answerability": {
+        "current_issue": "Underscoring by 23.5 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      },
+      "structured_data": {
+        "current_issue": "Underscoring by 8.3 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      },
+      "authority": {
+        "current_issue": "Underscoring by 10.9 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      },
+      "content_quality": {
+        "current_issue": "Underscoring by 8.5 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      },
+      "citationability": {
+        "current_issue": "Underscoring by 7.5 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      },
+      "technical": {
+        "current_issue": "Underscoring by 8.4 points",
+        "suggested_action": "Increase max_score or make formulas more lenient",
+        "priority": "HIGH"
+      }
+    },
+    "formula_changes": []
+  },
+  "detailed_results": [
+    {
+      "category": "gold_standard",
+      "name": "Wikipedia - AI Article",
+      "url": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+      "expected_score": 78,
+      "actual_score": 0,
+      "difference": -78,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 27,
+        "structured_data": 2,
+        "authority": 14,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T13:58:25.457512",
+      "category_differences": {
+        "answerability": {
+          "expected": 27,
+          "actual": 0,
+          "difference": -27,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 2,
+          "actual": 0,
+          "difference": -2,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 14,
+          "actual": 0,
+          "difference": -14,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "Wikipedia - Python Article",
+      "url": "https://en.wikipedia.org/wiki/Python_(programming_language)",
+      "expected_score": 80,
+      "actual_score": 0,
+      "difference": -80,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 28,
+        "structured_data": 2,
+        "authority": 14,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T13:58:32.910534",
+      "category_differences": {
+        "answerability": {
+          "expected": 28,
+          "actual": 0,
+          "difference": -28,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 2,
+          "actual": 0,
+          "difference": -2,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 14,
+          "actual": 0,
+          "difference": -14,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "Stack Overflow - Top Question",
+      "url": "https://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-processing-an-unsorted-array",
+      "expected_score": 82,
+      "actual_score": 0,
+      "difference": -82,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 28,
+        "structured_data": 8,
+        "authority": 13,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T13:58:41.924391",
+      "category_differences": {
+        "answerability": {
+          "expected": 28,
+          "actual": 0,
+          "difference": -28,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 13,
+          "actual": 0,
+          "difference": -13,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "MDN Web Docs - Array",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+      "expected_score": 85,
+      "actual_score": 0,
+      "difference": -85,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 29,
+        "structured_data": 10,
+        "authority": 14,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T13:58:44.796144",
+      "category_differences": {
+        "answerability": {
+          "expected": 29,
+          "actual": 0,
+          "difference": -29,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 14,
+          "actual": 0,
+          "difference": -14,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "gold_standard",
+      "name": "Mayo Clinic - Diabetes",
+      "url": "https://www.mayoclinic.org/diseases-conditions/diabetes/symptoms-causes/syc-20371444",
+      "expected_score": 87,
+      "actual_score": 0,
+      "difference": -87,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 29,
+        "structured_data": 16,
+        "authority": 15,
+        "content_quality": 10,
+        "citationability": 10,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T13:58:47.740853",
+      "category_differences": {
+        "answerability": {
+          "expected": 29,
+          "actual": 0,
+          "difference": -29,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 16,
+          "actual": 0,
+          "difference": -16,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 15,
+          "actual": 0,
+          "difference": -15,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "excellent",
+      "name": "New York Times - Technology",
+      "url": "https://www.nytimes.com/section/technology",
+      "expected_score": 72,
+      "actual_score": 0,
+      "difference": -72,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 24,
+        "structured_data": 12,
+        "authority": 15,
+        "content_quality": 9,
+        "citationability": 8,
+        "technical": 8
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T13:58:50.237630",
+      "category_differences": {
+        "answerability": {
+          "expected": 24,
+          "actual": 0,
+          "difference": -24,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 12,
+          "actual": 0,
+          "difference": -12,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 15,
+          "actual": 0,
+          "difference": -15,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "excellent",
+      "name": "HubSpot - Marketing Hub",
+      "url": "https://www.hubspot.com/marketing",
+      "expected_score": 70,
+      "actual_score": 0,
+      "difference": -70,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 26,
+        "structured_data": 14,
+        "authority": 11,
+        "content_quality": 8,
+        "citationability": 7,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T13:58:54.133555",
+      "category_differences": {
+        "answerability": {
+          "expected": 26,
+          "actual": 0,
+          "difference": -26,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 14,
+          "actual": 0,
+          "difference": -14,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 11,
+          "actual": 0,
+          "difference": -11,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 7,
+          "actual": 0,
+          "difference": -7,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "excellent",
+      "name": "Healthline - Vitamin D Foods",
+      "url": "https://www.healthline.com/nutrition/foods-high-in-vitamin-d",
+      "expected_score": 75,
+      "actual_score": 0,
+      "difference": -75,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 28,
+        "structured_data": 14,
+        "authority": 12,
+        "content_quality": 9,
+        "citationability": 8,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T14:03:28.212630",
+      "category_differences": {
+        "answerability": {
+          "expected": 28,
+          "actual": 0,
+          "difference": -28,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 14,
+          "actual": 0,
+          "difference": -14,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 12,
+          "actual": 0,
+          "difference": -12,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "good",
+      "name": "Medium - Popular Tech Article",
+      "url": "https://medium.com/@dan_abramov/smart-and-dumb-components-7ca2f9a7c7d0",
+      "expected_score": 58,
+      "actual_score": 0,
+      "difference": -58,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 20,
+        "structured_data": 8,
+        "authority": 10,
+        "content_quality": 9,
+        "citationability": 6,
+        "technical": 8
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T14:05:50.642810",
+      "category_differences": {
+        "answerability": {
+          "expected": 20,
+          "actual": 0,
+          "difference": -20,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 10,
+          "actual": 0,
+          "difference": -10,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "good",
+      "name": "Reddit - Programming Subreddit",
+      "url": "https://www.reddit.com/r/programming/",
+      "expected_score": 52,
+      "actual_score": 0,
+      "difference": -52,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 18,
+        "structured_data": 6,
+        "authority": 7,
+        "content_quality": 8,
+        "citationability": 5,
+        "technical": 8
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T14:05:53.628785",
+      "category_differences": {
+        "answerability": {
+          "expected": 18,
+          "actual": 0,
+          "difference": -18,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 7,
+          "actual": 0,
+          "difference": -7,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 5,
+          "actual": 0,
+          "difference": -5,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "good",
+      "name": "W3Schools - HTML Tutorial",
+      "url": "https://www.w3schools.com/html/",
+      "expected_score": 62,
+      "actual_score": 0,
+      "difference": -62,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 25,
+        "structured_data": 8,
+        "authority": 8,
+        "content_quality": 8,
+        "citationability": 6,
+        "technical": 9
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T14:05:56.048401",
+      "category_differences": {
+        "answerability": {
+          "expected": 25,
+          "actual": 0,
+          "difference": -25,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 9,
+          "actual": 0,
+          "difference": -9,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "average",
+      "name": "Blogger Platform Page",
+      "url": "https://www.blogger.com/",
+      "expected_score": 42,
+      "actual_score": 0,
+      "difference": -42,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 15,
+        "structured_data": 6,
+        "authority": 7,
+        "content_quality": 6,
+        "citationability": 4,
+        "technical": 7
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T14:06:14.324629",
+      "category_differences": {
+        "answerability": {
+          "expected": 15,
+          "actual": 0,
+          "difference": -15,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 7,
+          "actual": 0,
+          "difference": -7,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 4,
+          "actual": 0,
+          "difference": -4,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 7,
+          "actual": 0,
+          "difference": -7,
+          "percentage_error": 100.0
+        }
+      }
+    },
+    {
+      "category": "poor",
+      "name": "Example.com - Basic HTML",
+      "url": "https://example.com/",
+      "expected_score": 22,
+      "actual_score": 0,
+      "difference": -22,
+      "percentage_error": 100.0,
+      "expected_breakdown": {
+        "answerability": 8,
+        "structured_data": 2,
+        "authority": 2,
+        "content_quality": 4,
+        "citationability": 3,
+        "technical": 6
+      },
+      "actual_breakdown": {},
+      "grade": "N/A",
+      "timestamp": "2026-01-03T14:06:16.456779",
+      "category_differences": {
+        "answerability": {
+          "expected": 8,
+          "actual": 0,
+          "difference": -8,
+          "percentage_error": 100.0
+        },
+        "structured_data": {
+          "expected": 2,
+          "actual": 0,
+          "difference": -2,
+          "percentage_error": 100.0
+        },
+        "authority": {
+          "expected": 2,
+          "actual": 0,
+          "difference": -2,
+          "percentage_error": 100.0
+        },
+        "content_quality": {
+          "expected": 4,
+          "actual": 0,
+          "difference": -4,
+          "percentage_error": 100.0
+        },
+        "citationability": {
+          "expected": 3,
+          "actual": 0,
+          "difference": -3,
+          "percentage_error": 100.0
+        },
+        "technical": {
+          "expected": 6,
+          "actual": 0,
+          "difference": -6,
+          "percentage_error": 100.0
+        }
+      }
+    }
+  ],
+  "timestamp": "2026-01-03T14:06:18.461006"
+}

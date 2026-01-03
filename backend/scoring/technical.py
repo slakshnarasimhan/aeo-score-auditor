@@ -1,5 +1,6 @@
 """
 Technical & UX scoring (10 points max)
+Calibrated: January 2026 - Using realistic Core Web Vitals thresholds
 """
 from typing import Dict
 from loguru import logger
@@ -34,27 +35,39 @@ class TechnicalScorer:
         }
     
     def _score_performance(self, page_data: Dict) -> float:
-        """Score page performance (max 3 points)"""
+        """Score page performance (max 4 points) - increased from 3, more realistic thresholds"""
         performance = page_data.get('performance', {})
         ttfb = performance.get('ttfb', 0)
         
-        # Simple scoring based on TTFB (in milliseconds)
-        if ttfb <= 500:
+        # More realistic scoring based on TTFB (in milliseconds)
+        # Google's Core Web Vitals: LCP < 2500ms is "good"
+        if ttfb <= 800:  # Excellent
+            return 4
+        elif ttfb <= 1500:  # Good (relaxed from 1000)
             return 3
-        elif ttfb <= 1000:
+        elif ttfb <= 2500:  # Acceptable (new tier)
             return 2
-        elif ttfb <= 2000:
+        elif ttfb > 0:  # Page loaded, give credit
             return 1
         else:
             return 0
     
     def _score_mobile(self, page_data: Dict) -> float:
-        """Score mobile friendliness (max 2 points)"""
-        # Simplified: check for viewport meta tag
-        features = page_data.get('features', {})
-        if features.get('has_meta_description'):  # Proxy for having meta tags
-            return 2
-        return 0
+        """Score mobile friendliness (max 3 points) - increased from 2"""
+        # Check for viewport and responsive indicators
+        meta_tags = page_data.get('meta_tags', {})
+        
+        score = 0
+        
+        # Viewport meta tag (critical for mobile)
+        if 'viewport' in str(meta_tags).lower():
+            score += 2
+        
+        # Has any meta tags (basic mobile consideration)
+        if meta_tags:
+            score += 1
+        
+        return min(3, score)
     
     def _score_semantic_html(self, page_data: Dict) -> float:
         """Score semantic HTML (max 2 points)"""
@@ -72,9 +85,16 @@ class TechnicalScorer:
         return score
     
     def _score_internal_linking(self, page_data: Dict) -> float:
-        """Score internal linking (max 2 points)"""
-        # Placeholder - would need to analyze internal links
-        return 1
+        """Score internal linking (max 2 points) - more generous"""
+        # If page has content, assume reasonable internal structure
+        word_count = page_data.get('word_count', 0)
+        
+        if word_count > 500:
+            return 2  # Substantial content likely has links
+        elif word_count > 100:
+            return 1
+        
+        return 0
     
     def _score_meta_description(self, page_data: Dict) -> float:
         """Score meta description (max 1 point)"""

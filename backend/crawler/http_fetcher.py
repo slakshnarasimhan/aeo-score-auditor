@@ -60,7 +60,7 @@ class HTTPFetcher:
         """Internal fetch implementation"""
         start_time = time.time()
         
-        async with httpx.AsyncClient(follow_redirects=True, timeout=self.timeout) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=self.timeout, verify=False) as client:
             headers = {
                 'User-Agent': self.user_agent,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
