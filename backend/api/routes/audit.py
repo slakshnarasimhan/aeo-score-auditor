@@ -20,6 +20,7 @@ class AuditOptions(BaseModel):
     ai_engines: List[str] = ["gpt4", "gemini", "perplexity"]
     wait_for_completion: bool = False
     priority: str = "normal"
+    calculate_geo: bool = True  # Include GEO score in domain audits
 
 
 class PageAuditRequest(BaseModel):
@@ -125,10 +126,11 @@ async def audit_domain(request: DomainAuditRequest, background_tasks: Background
 
 
 async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
-    """Background task to run domain audit"""
+    """Background task to run domain audit with GEO scoring"""
     try:
         from crawler.domain_crawler import DomainAuditOrchestrator
         from progress_tracker import progress_tracker
+        from scoring.geo_scorer import GEOScorer
         
         orchestrator = DomainAuditOrchestrator(
             max_pages=max_pages,
@@ -136,6 +138,50 @@ async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
             job_id=job_id
         )
         result = await orchestrator.audit_domain(domain_url)
+        
+        # Calculate GEO score if pages are available
+        if result and result.get('page_results'):
+            logger.info(f"Calculating GEO score for {domain_url}")
+            geo_scorer = GEOScorer()
+            
+            # Prepare data for GEO scorer
+            pages_data = []
+            for page_result in result.get('page_results', []):
+                if page_result.get('overall_score', 0) > 0:  # Valid results only
+                    # Determine page intent from content classification
+                    content_type = page_result.get('content_classification', {}).get('type', 'KNOWLEDGE')
+                    intent_map = {
+                        'informational': 'KNOWLEDGE',
+                        'experiential': 'EXPERIENTIAL',
+                        'transactional': 'TRANSACTIONAL',
+                        'navigational': 'NAVIGATIONAL'
+                    }
+                    page_intent = intent_map.get(content_type, 'KNOWLEDGE')
+                    
+                    # Get authority signals
+                    authority_signals = {
+                        'hasAuthor': page_result.get('extracted_data', {}).get('has_author', False),
+                        'hasOrgSchema': len([s for s in page_result.get('breakdown', {}).get('structured_data', {}).get('sub_scores', {}).keys() if 'org' in s.lower()]) > 0,
+                        'hasDates': page_result.get('extracted_data', {}).get('has_dates', False)
+                    }
+                    
+                    pages_data.append({
+                        'url': page_result.get('url', ''),
+                        'html': '',  # We don't need to pass HTML
+                        'aeoscore': page_result.get('overall_score', 0),
+                        'pageIntent': page_intent,
+                        'pageSummary': f"Page covering {content_type} content with score {page_result.get('overall_score', 0)}",
+                        'authoritySignals': authority_signals
+                    })
+            
+            if pages_data:
+                geo_data = {
+                    'siteUrl': domain_url,
+                    'pages': pages_data
+                }
+                geo_result = geo_scorer.calculate_geo_score(geo_data)
+                result['geo_score'] = geo_result
+                logger.info(f"GEO score calculated: {geo_result.get('geo_score', 0)}/100")
         
         # Store result in progress tracker (separate storage for reliability)
         progress_tracker.store_result(job_id, result)

@@ -447,6 +447,110 @@ class PDFReportGenerator:
                         self.styles['Normal']
                     )
                     story.append(worst_text)
+            
+            # GEO Score Section (for domain audits only)
+            geo_score = audit_result.get('geo_score')
+            if geo_score:
+                story.append(PageBreak())
+                geo_heading = Paragraph(
+                    "<b>🤖 GEO Score - Generative Engine Optimization</b>",
+                    self.styles['ReportHeading']
+                )
+                story.append(geo_heading)
+                story.append(Spacer(1, 0.2*inch))
+                
+                # GEO Score display
+                geo_score_value = geo_score.get('geo_score', 0)
+                geo_score_text = Paragraph(
+                    f"<font size=36 color='#6366f1'><b>{geo_score_value}/100</b></font>",
+                    self.styles['Normal']
+                )
+                story.append(geo_score_text)
+                story.append(Spacer(1, 0.1*inch))
+                
+                # Summary
+                summary_text = Paragraph(
+                    f"<i>{geo_score.get('summary', '')}</i>",
+                    self.styles['Normal']
+                )
+                story.append(summary_text)
+                story.append(Spacer(1, 0.1*inch))
+                
+                # Brand info
+                brand_info = Paragraph(
+                    f"Brand: <b>{geo_score.get('brand_name', 'N/A')}</b> • "
+                    f"{geo_score.get('pages_analyzed', 0)} pages analyzed",
+                    self.styles['Normal']
+                )
+                story.append(brand_info)
+                story.append(Spacer(1, 0.2*inch))
+                
+                # Component breakdown
+                components_heading = Paragraph(
+                    "<b>GEO Component Breakdown</b>",
+                    self.styles['ReportSubHeading']
+                )
+                story.append(components_heading)
+                story.append(Spacer(1, 0.1*inch))
+                
+                components = geo_score.get('components', {})
+                geo_data = [['Component', 'Score', 'Max', '%']]
+                
+                for comp_name, comp_data in components.items():
+                    display_name = comp_name.replace('_', ' ').title()
+                    score = comp_data.get('score', 0)
+                    max_score = comp_data.get('max', 0)
+                    percentage = (score / max_score * 100) if max_score > 0 else 0
+                    
+                    geo_data.append([
+                        display_name,
+                        f"{score:.1f}",
+                        str(max_score),
+                        f"{percentage:.0f}%"
+                    ])
+                
+                geo_table = Table(geo_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
+                geo_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6366f1')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')])
+                ]))
+                story.append(geo_table)
+                story.append(Spacer(1, 0.2*inch))
+                
+                # Recommended Actions
+                actions = geo_score.get('recommended_actions', [])
+                if actions:
+                    actions_heading = Paragraph(
+                        "<b>💡 Recommended Actions</b>",
+                        self.styles['ReportSubHeading']
+                    )
+                    story.append(actions_heading)
+                    story.append(Spacer(1, 0.1*inch))
+                    
+                    for action in actions:
+                        action_item = Paragraph(
+                            f"▸ {action}",
+                            self.styles['Normal']
+                        )
+                        story.append(action_item)
+                        story.append(Spacer(1, 0.05*inch))
+                    
+                    story.append(Spacer(1, 0.1*inch))
+                
+                # Disclaimer
+                disclaimer = Paragraph(
+                    "<i>Note: GEO Score estimates brand inclusion readiness for AI systems. "
+                    "It does not predict rankings or guarantee citations.</i>",
+                    self.styles['Normal']
+                )
+                story.append(disclaimer)
         
         # Footer
         story.append(Spacer(1, 0.3*inch))

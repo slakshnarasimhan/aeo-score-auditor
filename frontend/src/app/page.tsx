@@ -24,6 +24,21 @@ interface ScoreBreakdown {
   };
 }
 
+interface GEOScore {
+  geo_score: number;
+  components: {
+    brand_foundation: { score: number; max: number; evidence: string[] };
+    topic_coverage: { score: number; max: number; evidence: string[] };
+    consistency: { score: number; max: number; evidence: string[] };
+    ai_recall: { score: number; max: number; evidence: string[] };
+    trust: { score: number; max: number; evidence: string[] };
+  };
+  summary: string;
+  recommended_actions: string[];
+  brand_name: string;
+  pages_analyzed: number;
+}
+
 interface ContentClassification {
   type: string;
   confidence: string;
@@ -49,6 +64,7 @@ interface DomainAuditResult {
   best_page?: any;
   worst_page?: any;
   content_classification?: ContentClassification;
+  geo_score?: GEOScore;
 }
 
 interface ProgressUpdate {
@@ -757,6 +773,83 @@ export default function Home() {
                   <h4 className="font-semibold text-red-800 mb-2">📉 Needs Most Improvement</h4>
                   <p className="text-xs text-gray-600 mb-1 truncate">{domainResult.worst_page.url}</p>
                   <p className="text-2xl font-bold text-red-700">{domainResult.worst_page.overall_score}/100</p>
+                </div>
+              </div>
+            )}
+
+            {/* GEO Score Section */}
+            {domainResult.geo_score && (
+              <div className="mt-8 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">🤖</span>
+                  <div>
+                    <h3 className="text-2xl font-bold text-indigo-900">GEO Score</h3>
+                    <p className="text-sm text-indigo-600">Generative Engine Optimization</p>
+                  </div>
+                </div>
+
+                {/* GEO Score Display */}
+                <div className="bg-white rounded-lg p-4 mb-4 shadow-md">
+                  <div className="flex items-baseline gap-3 mb-2">
+                    <span className="text-5xl font-extrabold text-indigo-900">{domainResult.geo_score.geo_score}</span>
+                    <span className="text-2xl text-gray-600">/100</span>
+                    <span className="ml-4 text-sm text-gray-500">Inclusion Readiness</span>
+                  </div>
+                  <p className="text-sm text-gray-700 italic">{domainResult.geo_score.summary}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Brand: <span className="font-semibold">{domainResult.geo_score.brand_name}</span> • 
+                    {domainResult.geo_score.pages_analyzed} pages analyzed
+                  </p>
+                </div>
+
+                {/* Component Breakdown */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                  {Object.entries(domainResult.geo_score.components).map(([key, comp]) => {
+                    const percentage = (comp.score / comp.max) * 100;
+                    const getColor = (pct: number) => {
+                      if (pct >= 70) return 'bg-green-500';
+                      if (pct >= 50) return 'bg-yellow-500';
+                      return 'bg-red-500';
+                    };
+                    const displayName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                    return (
+                      <div key={key} className="bg-white rounded-lg p-3 shadow">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-semibold text-gray-700">{displayName}</span>
+                          <span className="text-sm font-bold text-gray-900">{comp.score}/{comp.max}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${getColor(percentage)}`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Recommendations */}
+                {domainResult.geo_score.recommended_actions.length > 0 && (
+                  <div className="bg-white rounded-lg p-4 shadow">
+                    <h4 className="font-semibold text-gray-800 mb-3">💡 Recommended Actions</h4>
+                    <ul className="space-y-2">
+                      {domainResult.geo_score.recommended_actions.map((action, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <span className="text-indigo-600 mt-0.5">▸</span>
+                          <span className="text-gray-700">{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-indigo-100 rounded-lg">
+                  <p className="text-xs text-indigo-800">
+                    ℹ️ <strong>Note:</strong> GEO Score estimates brand inclusion readiness for AI systems.
+                    It does not predict rankings or guarantee citations.
+                  </p>
                 </div>
               </div>
             )}
