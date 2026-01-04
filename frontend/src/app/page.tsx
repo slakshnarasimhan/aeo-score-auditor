@@ -48,6 +48,7 @@ interface ProgressUpdate {
   percentage: number;
   pages_audited: number;
   total_urls: number;
+  urls_discovered: number;
   message: string;
   current_url?: string;
 }
@@ -224,10 +225,11 @@ export default function Home() {
       const data = await response.json();
       setJobId(data.job_id);
       setProgress({
-        status: 'queued',
-        current_step: 'Starting...',
+        status: 'discovering',
+        current_step: 'Starting discovery...',
         percentage: 0,
         pages_audited: 0,
+        urls_discovered: 0,
         total_urls: maxPages,
         message: 'Initializing domain audit'
       });
@@ -448,32 +450,75 @@ export default function Home() {
 
         {/* Progress Bar */}
         {progress && (
-          <div className="mt-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-xl">
-            <h3 className="text-xl font-semibold mb-4 text-blue-900">
-              {progress.current_step}
-            </h3>
-            <div className="relative w-full bg-gray-200 rounded-full h-6 mb-3">
+          <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl shadow-lg">
+            {/* Status Badge */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  progress.status === 'discovering' ? 'bg-yellow-200 text-yellow-800' :
+                  progress.status === 'auditing' ? 'bg-blue-200 text-blue-800' :
+                  progress.status === 'completed' ? 'bg-green-200 text-green-800' :
+                  'bg-red-200 text-red-800'
+                }`}>
+                  {progress.status === 'discovering' ? '🔍 Discovering' :
+                   progress.status === 'auditing' ? '⚡ Auditing' :
+                   progress.status === 'completed' ? '✅ Completed' :
+                   '❌ Failed'}
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800">
+                  {progress.current_step}
+                </h3>
+              </div>
+              <span className="text-2xl font-bold text-blue-600">
+                {progress.percentage.toFixed(0)}%
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="relative w-full bg-gray-200 rounded-full h-8 mb-4 shadow-inner">
               <div
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full transition-all duration-500 ease-out shadow-md"
                 style={{ width: `${progress.percentage}%` }}
               >
-                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">
-                  {progress.percentage.toFixed(1)}%
-                </span>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-bold text-white drop-shadow">
+                    {progress.percentage >= 10 ? `${progress.percentage.toFixed(1)}%` : ''}
+                  </span>
+                </div>
               </div>
             </div>
-            <p className="text-sm text-gray-700">
-              {progress.message}
-            </p>
-            {progress.pages_audited > 0 && (
-              <p className="text-sm text-gray-600 mt-2">
-                Audited: {progress.pages_audited}/{progress.total_urls} pages
+
+            {/* Detailed Info Grid */}
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              {progress.urls_discovered > 0 && (
+                <div className="bg-white rounded-lg p-3 shadow">
+                  <p className="text-xs text-gray-500 mb-1">URLs Discovered</p>
+                  <p className="text-2xl font-bold text-indigo-600">{progress.urls_discovered}</p>
+                </div>
+              )}
+              {progress.total_urls > 0 && (
+                <div className="bg-white rounded-lg p-3 shadow">
+                  <p className="text-xs text-gray-500 mb-1">Progress</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {progress.pages_audited}/{progress.total_urls}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Message */}
+            <div className="bg-white rounded-lg p-3 mb-2 shadow">
+              <p className="text-sm font-medium text-gray-700">
+                {progress.message}
               </p>
-            )}
+            </div>
+
+            {/* Current URL */}
             {progress.current_url && (
-              <p className="text-xs text-gray-500 mt-1 truncate">
-                Current: {progress.current_url}
-              </p>
+              <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+                <p className="text-xs text-indigo-600 font-semibold mb-1">Currently Auditing:</p>
+                <p className="text-xs text-gray-700 truncate">{progress.current_url}</p>
+              </div>
             )}
           </div>
         )}
