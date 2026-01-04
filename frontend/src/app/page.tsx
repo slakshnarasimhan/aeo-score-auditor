@@ -597,9 +597,6 @@ export default function Home() {
             <div className="flex items-baseline gap-4 mb-6">
               <span className="text-5xl font-extrabold text-gray-900">{auditResult.overall_score}</span>
               <span className="text-2xl text-gray-600">/100</span>
-              <span className={`text-3xl font-bold ml-4 ${getGradeColor(auditResult.grade)}`}>
-                Grade: {auditResult.grade}
-              </span>
             </div>
 
             <h3 className="text-2xl font-semibold mb-4 text-gray-700">Score Breakdown:</h3>
@@ -683,9 +680,6 @@ export default function Home() {
             <div className="flex items-baseline gap-4 mb-6">
               <span className="text-5xl font-extrabold text-gray-900">{domainResult.overall_score}</span>
               <span className="text-2xl text-gray-600">/100</span>
-              <span className={`text-3xl font-bold ml-4 ${getGradeColor(domainResult.grade)}`}>
-                Grade: {domainResult.grade}
-              </span>
             </div>
 
             <h3 className="text-2xl font-semibold mb-4 text-gray-700">Average Score Breakdown:</h3>
