@@ -74,6 +74,9 @@ class ExtractedPageData:
     # Features (computed)
     features: dict
     
+    # Content classification
+    content_type: dict
+    
     def to_dict(self) -> dict:
         return asdict(self)
     
@@ -139,6 +142,10 @@ class ExtractionOrchestrator:
         faq_schema = schema.extract_faq_schema(jsonld)
         schema_validation = schema.validate_all_schemas(jsonld)
         
+        # Step 5.5: Classify content type
+        from .extractors.content_classifier import classify_content
+        content_classification = classify_content(soup, jsonld, url)
+        
         # Step 6: Extract metadata
         meta_tags = parser.extract_meta_tags()
         author = self._extract_author_info(soup, jsonld)
@@ -189,7 +196,8 @@ class ExtractionOrchestrator:
             external_links=external_links,
             performance=page_data.performance,
             is_https=url.startswith('https://'),
-            features=features
+            features=features,
+            content_type=content_classification
         )
         
         logger.info(f"Extraction complete for: {url}")

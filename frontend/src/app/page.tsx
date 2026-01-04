@@ -24,10 +24,18 @@ interface ScoreBreakdown {
   };
 }
 
+interface ContentClassification {
+  type: string;
+  confidence: string;
+  profile_used: string;
+  description: string;
+}
+
 interface AuditResult {
   overall_score: number;
   grade: string;
   breakdown: Record<string, ScoreBreakdown>;
+  content_classification?: ContentClassification;
 }
 
 interface DomainAuditResult {
@@ -40,6 +48,7 @@ interface DomainAuditResult {
   page_results?: Array<any>;
   best_page?: any;
   worst_page?: any;
+  content_classification?: ContentClassification;
 }
 
 interface ProgressUpdate {
@@ -564,6 +573,27 @@ export default function Home() {
                 </button>
               </div>
             </div>
+            {/* Content Type Badge */}
+            {auditResult.content_classification && (
+              <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-semibold text-indigo-900">Content Type:</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                    auditResult.content_classification.type === 'experiential' ? 'bg-purple-200 text-purple-800' :
+                    auditResult.content_classification.type === 'informational' ? 'bg-blue-200 text-blue-800' :
+                    auditResult.content_classification.type === 'transactional' ? 'bg-green-200 text-green-800' :
+                    'bg-gray-200 text-gray-800'
+                  }`}>
+                    {auditResult.content_classification.type}
+                  </span>
+                  <span className="text-xs text-gray-600">
+                    ({auditResult.content_classification.confidence} confidence)
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 italic">{auditResult.content_classification.description}</p>
+              </div>
+            )}
+
             <div className="flex items-baseline gap-4 mb-6">
               <span className="text-5xl font-extrabold text-gray-900">{auditResult.overall_score}</span>
               <span className="text-2xl text-gray-600">/100</span>
