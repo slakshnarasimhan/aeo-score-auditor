@@ -60,6 +60,10 @@ class AuditPipeline:
                 }
             }
             
+            # Include content classification if available
+            if 'content_classification' in scores:
+                result['content_classification'] = scores['content_classification']
+            
             logger.info(f"Audit complete for: {url} - Score: {scores['overall_score']}")
             return result
             
