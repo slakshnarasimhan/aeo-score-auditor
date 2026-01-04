@@ -304,20 +304,28 @@ export default function Home() {
         throw new Error('Failed to generate PDF');
       }
 
-      // Extract domain name from the audited URL
-      const auditedUrl = result.url;
+      // Extract domain name from the audited URL or domain
+      let auditedUrl: string;
+      if (type === 'page') {
+        // For single page audits, use the URL from state
+        auditedUrl = url;
+      } else {
+        // For domain audits, use the domain field
+        auditedUrl = (result as DomainAuditResult).domain;
+      }
+      
       const domainName = extractDomainName(auditedUrl);
       const filename = `aeo-report-${domainName}.pdf`;
 
       // Create blob and download
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = downloadUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
     } catch (err: any) {
       setError(`Failed to download PDF: ${err.message}`);
