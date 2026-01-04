@@ -86,21 +86,28 @@ class ExtractionOrchestrator:
     
     def __init__(self):
         self.fetcher = Fetcher()
+        # Import local fetcher for file:// URLs
+        from .local_fetcher import LocalFileFetcher
+        self.local_fetcher = LocalFileFetcher()
     
     async def extract(self, url: str) -> ExtractedPageData:
         """
         Complete extraction pipeline
         
         Args:
-            url: URL to extract data from
+            url: URL or local file path to extract data from
             
         Returns:
             ExtractedPageData with all extracted information
         """
         logger.info(f"Starting extraction for: {url}")
         
-        # Step 1: Fetch page
-        page_data = await self.fetcher.fetch(url)
+        # Step 1: Fetch page (detect local file vs URL)
+        if self._is_local_file(url):
+            logger.info(f"Detected local file path: {url}")
+            page_data = await self.local_fetcher.fetch(url)
+        else:
+            page_data = await self.fetcher.fetch(url)
         
         if page_data.error:
             logger.error(f"Failed to fetch {url}: {page_data.error}")
@@ -247,6 +254,18 @@ class ExtractionOrchestrator:
         """Extract domain from URL"""
         from urllib.parse import urlparse
         return urlparse(url).netloc
+    
+    def _is_local_file(self, url: str) -> bool:
+        """Check if URL is a local file path"""
+        # Check for file:// protocol
+        if url.startswith('file://'):
+            return True
+        # Check for absolute file paths
+        if url.startswith('/') or (len(url) > 2 and url[1] == ':'):  # Unix or Windows paths
+            # Verify it's not a URL path
+            if not url.startswith('http://') and not url.startswith('https://'):
+                return True
+        return False
     
     def _compute_features(self, data: dict) -> dict:
         """Compute features for scoring"""

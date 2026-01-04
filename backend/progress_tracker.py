@@ -62,6 +62,8 @@ class ProgressTracker:
     def update(self, job_id: str, **kwargs):
         """Update job progress"""
         if job_id not in self._progress:
+            from loguru import logger
+            logger.warning(f"Tried to update non-existent job: {job_id}")
             return
         
         progress = self._progress[job_id]
@@ -81,6 +83,10 @@ class ProgressTracker:
                 progress.percentage = 10 + ((progress.pages_audited / progress.total_urls) * 90)
             elif progress.status == "completed":
                 progress.percentage = 100.0
+        
+        # Debug logging
+        from loguru import logger
+        logger.debug(f"Progress update for {job_id}: status={progress.status}, pages={progress.pages_audited}/{progress.total_urls}, percentage={progress.percentage:.1f}%")
         
         # Notify listeners
         self._notify_listeners(job_id)

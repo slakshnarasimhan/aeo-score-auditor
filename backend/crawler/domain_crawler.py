@@ -328,6 +328,7 @@ class DomainAuditOrchestrator:
         
         # Report progress: URLs discovered
         if self.tracker and self.job_id:
+            logger.info(f"Updating progress: discovered {len(urls)} URLs, switching to auditing phase")
             self.tracker.update(
                 self.job_id,
                 status="auditing",
@@ -336,6 +337,8 @@ class DomainAuditOrchestrator:
                 urls_discovered=len(urls),
                 message=f"Found {len(urls)} pages to audit"
             )
+        else:
+            logger.warning(f"Cannot update progress: tracker={self.tracker}, job_id={self.job_id}")
         
         # Step 2: Audit each page (with concurrency limit)
         pipeline = AuditPipeline()
@@ -360,12 +363,15 @@ class DomainAuditOrchestrator:
                 
                 # Report progress after each page
                 if self.tracker and self.job_id:
+                    logger.debug(f"Updating progress: {len(page_results)}/{len(urls)} pages audited")
                     self.tracker.update(
                         self.job_id,
                         pages_audited=len(page_results),
                         current_url=url,
                         message=f"Audited {len(page_results)}/{len(urls)} pages"
                     )
+                else:
+                    logger.warning(f"Tracker not available: tracker={self.tracker}, job_id={self.job_id}")
             
             logger.info(f"Audited {len(page_results)}/{len(urls)} pages...")
         

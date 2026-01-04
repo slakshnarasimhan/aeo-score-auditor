@@ -99,6 +99,13 @@ export default function Home() {
       try {
         const data = JSON.parse(event.data);
         console.log('SSE received:', data); // Debug log
+        console.log('Progress values:', {
+          status: data.status,
+          percentage: data.percentage,
+          pages_audited: data.pages_audited,
+          total_urls: data.total_urls,
+          urls_discovered: data.urls_discovered
+        });
         
         if (data.status === 'done' && data.result) {
           // Final result received via SSE
@@ -112,6 +119,7 @@ export default function Home() {
         } else if (data.status === 'completed' && data.percentage === 100) {
           // Progress shows completed, wait for result or fetch it
           console.log('Audit completed at 100%, waiting for result...');
+          console.log('Setting progress to:', data);
           setProgress(data);
           
           // Fallback: If result doesn't arrive via SSE in 2 seconds, fetch it directly
@@ -140,6 +148,7 @@ export default function Home() {
           }, 2000);
         } else {
           // Progress update
+          console.log('Regular progress update, setting progress to:', data);
           setProgress(data);
         }
       } catch (e) {
@@ -395,10 +404,10 @@ export default function Home() {
         {auditType === 'page' ? (
           <form onSubmit={handlePageAudit} className="flex flex-col gap-4">
             <input
-              type="url"
+              type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="Enter page URL (e.g., https://example.com/article)"
+              placeholder="Enter page URL or local file path (e.g., https://example.com or file:///path/to/file.html)"
               className="p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               disabled={loading}

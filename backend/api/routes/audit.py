@@ -24,7 +24,7 @@ class AuditOptions(BaseModel):
 
 class PageAuditRequest(BaseModel):
     """Request to audit a single page"""
-    url: HttpUrl
+    url: str  # Changed from HttpUrl to str to support file:// paths
     deep_crawl: bool = False  # For backward compatibility with frontend
     re_audit: bool = False  # For backward compatibility with frontend
     options: Optional[AuditOptions] = None
