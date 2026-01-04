@@ -51,29 +51,74 @@ class AEOScoreCalculator:
         logger.info(f"Content type: {content_type} (confidence: {confidence})")
         logger.info(f"Using scoring profile: {profile.name}")
         
-        # Calculate each bucket
-        scores = {}
+        # Step 1: Calculate all raw scores
+        raw_scores = {}
         for bucket_name, scorer in self.scorers.items():
             try:
                 bucket_score = scorer.calculate(page_data)
-                
-                # Apply content-aware weight
-                weight = profile.get_weight(bucket_name)
-                if weight != 1.0:
-                    original_score = bucket_score['score']
-                    weighted_score = original_score * weight
-                    # Don't exceed max score
-                    bucket_score['score'] = min(weighted_score, bucket_score['max'])
-                    bucket_score['weight_applied'] = weight
-                    bucket_score['original_score'] = original_score
-                    logger.debug(f"{bucket_name}: {original_score:.1f} → {bucket_score['score']:.1f} (weight: {weight})")
-                else:
-                    logger.debug(f"{bucket_name}: {bucket_score['score']}/{bucket_score['max']}")
-                
-                scores[bucket_name] = bucket_score
+                raw_scores[bucket_name] = bucket_score
             except Exception as e:
                 logger.error(f"Error calculating {bucket_name}: {e}")
-                scores[bucket_name] = {'score': 0, 'max': scorer.max_score, 'error': str(e)}
+                raw_scores[bucket_name] = {'score': 0, 'max': scorer.max_score, 'error': str(e)}
+        
+        # Step 2: Calculate weighted max scores and normalization factor
+        total_weighted_max = sum(
+            raw_scores[bucket]['max'] * profile.get_weight(bucket)
+            for bucket in self.scorers.keys()
+        )
+        
+        # Normalization factor to maintain 95-point scale (leaving 5 for AI citation)
+        normalization_factor = 95 / total_weighted_max if total_weighted_max > 0 else 1
+        
+        # Step 3: Apply weights - keep earned scores for low weights, give bonuses for high weights
+        scores = {}
+        for bucket_name in self.scorers.keys():
+            bucket_score = raw_scores[bucket_name]
+            weight = profile.get_weight(bucket_name)
+            
+            original_max = bucket_score['max']
+            earned_score = bucket_score['score']
+            
+            # Calculate percentage earned
+            percentage_earned = (earned_score / original_max) if original_max > 0 else 0
+            
+            if weight < 1.0:
+                # For low-weight categories: Keep earned score as-is (don't penalize)
+                # Only adjust the max to show it matters less
+                rebalanced_max = original_max * weight * normalization_factor
+                rebalanced_score = earned_score  # Keep the raw earned score
+                
+            elif weight > 1.0:
+                # For high-weight categories: Give bonus for good performance
+                rebalanced_max = original_max * weight * normalization_factor
+                # Bonus: if percentage > 50%, apply weight as multiplier
+                if percentage_earned > 0.5:
+                    bonus_multiplier = 1 + (weight - 1) * percentage_earned
+                    rebalanced_score = earned_score * bonus_multiplier
+                else:
+                    rebalanced_score = earned_score
+                # Cap at max
+                rebalanced_score = min(rebalanced_score, rebalanced_max)
+                
+            else:
+                # Weight == 1.0: Standard scoring
+                rebalanced_max = original_max * normalization_factor
+                rebalanced_score = percentage_earned * rebalanced_max
+            
+            # Store results
+            bucket_score['original_max'] = original_max
+            bucket_score['original_score'] = earned_score
+            bucket_score['score'] = round(rebalanced_score, 1)
+            bucket_score['max'] = round(rebalanced_max, 1)
+            bucket_score['weight_applied'] = weight
+            bucket_score['percentage'] = round(percentage_earned * 100, 1)
+            
+            if weight != 1.0:
+                logger.debug(f"{bucket_name}: {earned_score:.1f}/{original_max} ({percentage_earned*100:.0f}%) → {rebalanced_score:.1f}/{rebalanced_max:.1f} (weight: {weight}x)")
+            else:
+                logger.debug(f"{bucket_name}: {earned_score:.1f}/{original_max} → {rebalanced_score:.1f}/{rebalanced_max:.1f}")
+            
+            scores[bucket_name] = bucket_score
         
         # Add AI citation score if available
         if 'ai_citation_data' in page_data:
