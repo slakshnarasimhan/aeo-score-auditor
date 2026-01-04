@@ -263,6 +263,29 @@ export default function Home() {
     return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const extractDomainName = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      let hostname = urlObj.hostname;
+      
+      // Remove 'www.' prefix
+      hostname = hostname.replace(/^www\./, '');
+      
+      // Extract the main domain name (e.g., 'aprisio' from 'aprisio.com')
+      const parts = hostname.split('.');
+      if (parts.length >= 2) {
+        // For domain.tld, return 'domain'
+        // For subdomain.domain.tld, return 'domain'
+        return parts[parts.length - 2];
+      }
+      
+      return hostname;
+    } catch (e) {
+      // Fallback if URL parsing fails
+      return 'report';
+    }
+  };
+
   const downloadPDF = async (result: AuditResult | DomainAuditResult, type: 'page' | 'domain') => {
     try {
       const response = await fetch(`${API_URL}/api/v1/audit/pdf`, {
@@ -281,15 +304,10 @@ export default function Home() {
         throw new Error('Failed to generate PDF');
       }
 
-      // Get filename from Content-Disposition header or create one
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'aeo_report.pdf';
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
+      // Extract domain name from the audited URL
+      const auditedUrl = result.url;
+      const domainName = extractDomainName(auditedUrl);
+      const filename = `aeo-report-${domainName}.pdf`;
 
       // Create blob and download
       const blob = await response.blob();
