@@ -216,135 +216,105 @@ class PDFReportGenerator:
             
             story.append(Spacer(1, 0.2*inch))
         
-        # Detailed page-by-page breakdown (for domain audits with detailed=True)
+        # Action Plan - Grouped by Issue Type (for domain audits with detailed=True)
         if audit_type == 'domain' and detailed:
             page_results = audit_result.get('page_results', [])
             if page_results:
                 story.append(PageBreak())
-                detailed_heading = Paragraph("<b>Detailed Page-by-Page Analysis</b>", self.styles['ReportHeading'])
-                story.append(detailed_heading)
-                story.append(Spacer(1, 0.2*inch))
+                action_heading = Paragraph("<b>📋 Action Plan - Grouped by Issue Type</b>", self.styles['ReportHeading'])
+                story.append(action_heading)
+                story.append(Spacer(1, 0.1*inch))
                 
-                info_text = Paragraph(
-                    f"<i>This section contains detailed scoring breakdown for all {len(page_results)} audited pages.</i>",
+                intro_text = Paragraph(
+                    f"<i>Rather than fixing pages one by one, tackle issues that affect multiple pages together. "
+                    f"This analysis covers all {len(page_results)} audited pages.</i>",
                     self.styles['Normal']
                 )
-                story.append(info_text)
-                story.append(Spacer(1, 0.3*inch))
+                story.append(intro_text)
+                story.append(Spacer(1, 0.2*inch))
                 
-                for idx, page_result in enumerate(page_results, 1):
-                    # Page header
-                    page_url = page_result.get('url', 'N/A')
-                    page_score = page_result.get('overall_score', 0)
-                    page_grade = page_result.get('grade', 'F')
-                    
-                    page_header = Paragraph(
-                        f"<b>Page {idx}: {page_url}</b><br/>"
-                        f"Score: {page_score}/100 | Grade: {page_grade}",
-                        self.styles['ReportSubHeading']
+                # Group pages by issues
+                issue_groups = self._group_pages_by_issues(page_results)
+                
+                if not issue_groups:
+                    no_issues_text = Paragraph(
+                        "<i>Great! No major issues detected across your pages.</i>",
+                        self.styles['Normal']
                     )
-                    story.append(page_header)
-                    story.append(Spacer(1, 0.1*inch))
-                    
-                    # Page category breakdown
-                    page_breakdown = page_result.get('breakdown', {})
-                    if page_breakdown:
-                        page_data = [['Category', 'Score', '%']]
-                        for category, data in page_breakdown.items():
-                            cat_name = category.replace('_', ' ').title()
-                            score = data.get('score', 0)
-                            max_score = data.get('max', 100)
-                            percentage = data.get('percentage', 0)
-                            page_data.append([
-                                cat_name,
-                                f"{score}/{max_score}",
-                                f"{percentage:.1f}%"
-                            ])
+                    story.append(no_issues_text)
+                else:
+                    # Display grouped recommendations
+                    for issue_type, issue_data in sorted(issue_groups.items(), key=lambda x: len(x[1]['pages']), reverse=True):
+                        if not issue_data['pages']:
+                            continue
                         
-                        page_table = Table(page_data, colWidths=[3*inch, 1.5*inch, 1.5*inch])
-                        page_table.setStyle(TableStyle([
-                            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#9ca3af')),
-                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                            ('FONTSIZE', (0, 0), (-1, -1), 8),
-                            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')])
-                        ]))
-                        story.append(page_table)
-                        story.append(Spacer(1, 0.1*inch))
+                        affected_count = len(issue_data['pages'])
                         
-                        # Sub-scores for each category (detailed view)
-                        for category, data in page_breakdown.items():
-                            sub_scores = data.get('sub_scores', {})
-                            if sub_scores:
-                                cat_name = category.replace('_', ' ').title()
-                                sub_header = Paragraph(
-                                    f"<i>{cat_name} Details:</i>",
-                                    ParagraphStyle(name='SubDetail', parent=self.styles['Normal'], 
-                                                 fontSize=8, textColor=colors.HexColor('#6b7280'))
-                                )
-                                story.append(sub_header)
-                                
-                                sub_data = []
-                                for sub_cat, sub_score in sub_scores.items():
-                                    sub_name = sub_cat.replace('_', ' ').title()
-                                    sub_data.append([f"  • {sub_name}", str(sub_score)])
-                                
-                                if sub_data:
-                                    sub_table = Table(sub_data, colWidths=[4*inch, 1*inch])
-                                    sub_table.setStyle(TableStyle([
-                                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                                        ('FONTSIZE', (0, 0), (-1, -1), 7),
-                                        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#4b5563')),
-                                        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                                        ('TOPPADDING', (0, 0), (-1, -1), 3),
-                                    ]))
-                                    story.append(sub_table)
-                                    story.append(Spacer(1, 0.05*inch))
+                        # Issue heading with count
+                        issue_heading = Paragraph(
+                            f"<b>{issue_data['icon']} {issue_type}</b>",
+                            self.styles['ReportSubHeading']
+                        )
+                        story.append(issue_heading)
                         
-                        # Generate page-specific recommendations
-                        page_recommendations = self.rec_generator.generate_recommendations(page_result, top_n=3)
-                        if page_recommendations:
-                            rec_header = Paragraph(
-                                "<b>💡 Top Improvement Suggestions:</b>",
-                                ParagraphStyle(name='RecHeader', parent=self.styles['Normal'],
-                                             fontSize=9, textColor=colors.HexColor('#059669'),
-                                             fontName='Helvetica-Bold', spaceAfter=4)
+                        affected_para = Paragraph(
+                            f"<font color='#dc2626'><b>{affected_count} page(s) affected</b></font>",
+                            self.styles['Normal']
+                        )
+                        story.append(affected_para)
+                        story.append(Spacer(1, 0.08*inch))
+                        
+                        # Description and impact
+                        desc_text = Paragraph(
+                            f"<b>Why it matters:</b> {issue_data['description']}",
+                            self.styles['Normal']
+                        )
+                        story.append(desc_text)
+                        story.append(Spacer(1, 0.05*inch))
+                        
+                        impact_text = Paragraph(
+                            f"<b>Potential impact:</b> {issue_data['impact']}",
+                            self.styles['Normal']
+                        )
+                        story.append(impact_text)
+                        story.append(Spacer(1, 0.08*inch))
+                        
+                        # How to fix
+                        fix_text = Paragraph(
+                            f"<b>How to fix:</b> {issue_data['fix']}",
+                            ParagraphStyle(name='FixText', parent=self.styles['Normal'],
+                                         textColor=colors.HexColor('#059669'))
+                        )
+                        story.append(fix_text)
+                        story.append(Spacer(1, 0.08*inch))
+                        
+                        # Affected pages
+                        pages_heading = Paragraph(
+                            f"<b>Affected pages:</b>",
+                            self.styles['Normal']
+                        )
+                        story.append(pages_heading)
+                        story.append(Spacer(1, 0.05*inch))
+                        
+                        # Create bullet list of affected pages (show first 10, mention total)
+                        display_pages = issue_data['pages'][:10]
+                        for page_url in display_pages:
+                            page_item = Paragraph(
+                                f"• {self._truncate_url(page_url, 80)}",
+                                ParagraphStyle(name='PageItem', parent=self.styles['Normal'],
+                                             fontSize=8, leftIndent=10, textColor=colors.HexColor('#4b5563'))
                             )
-                            story.append(Spacer(1, 0.1*inch))
-                            story.append(rec_header)
-                            
-                            for rec in page_recommendations:
-                                # Recommendation title
-                                rec_title = Paragraph(
-                                    f"<b>{rec['title']}</b> ({rec['percentage']:.0f}% complete)",
-                                    ParagraphStyle(name='RecTitle', parent=self.styles['Normal'],
-                                                 fontSize=8, textColor=colors.HexColor('#dc2626'),
-                                                 fontName='Helvetica-Bold')
-                                )
-                                story.append(rec_title)
-                                
-                                # Recommendation tips (bullet list)
-                                tips = rec.get('tips', [])
-                                if tips:
-                                    for tip in tips:
-                                        tip_para = Paragraph(
-                                            f"  • {tip}",
-                                            ParagraphStyle(name='RecTip', parent=self.styles['Normal'],
-                                                         fontSize=7, textColor=colors.HexColor('#374151'),
-                                                         leftIndent=10, spaceAfter=2)
-                                        )
-                                        story.append(tip_para)
-                                
-                                story.append(Spacer(1, 0.08*inch))
-                    
-                    story.append(Spacer(1, 0.2*inch))
-                    
-                    # Add page break every 3 pages for readability
-                    if idx % 3 == 0 and idx < len(page_results):
-                        story.append(PageBreak())
+                            story.append(page_item)
+                        
+                        if affected_count > 10:
+                            more_pages = Paragraph(
+                                f"<i>...and {affected_count - 10} more page(s)</i>",
+                                ParagraphStyle(name='MorePages', parent=self.styles['Normal'],
+                                             fontSize=8, leftIndent=10, textColor=colors.HexColor('#6b7280'))
+                            )
+                            story.append(more_pages)
+                        
+                        story.append(Spacer(1, 0.25*inch))
         
         # Recommendations (if available)
         # Generate detailed recommendations using our recommendation engine
@@ -568,6 +538,115 @@ class PDFReportGenerator:
         
         logger.info(f"Generated PDF report for {audit_type} audit")
         return buffer
+
+
+    def _group_pages_by_issues(self, page_results: list) -> dict:
+        """Group pages by the issues they need fixing"""
+        issues = {
+            'Missing Organization Schema': {
+                'pages': [],
+                'icon': '🏢',
+                'description': 'Organization schema helps AI systems understand your brand identity and structure.',
+                'impact': 'Improves brand recognition in AI responses',
+                'fix': 'Add Organization schema markup to these pages with name, logo, and contact information.'
+            },
+            'No Author Information': {
+                'pages': [],
+                'icon': '✍️',
+                'description': 'Author attribution builds trust and credibility for content.',
+                'impact': 'Increases content trustworthiness for AI systems',
+                'fix': 'Add author bylines and consider adding Person schema for key authors.'
+            },
+            'Missing Publication Dates': {
+                'pages': [],
+                'icon': '📅',
+                'description': 'Dates help AI systems assess content freshness and relevance.',
+                'impact': 'Better temporal context for AI inclusion',
+                'fix': 'Add publication and last-modified dates to all content pages.'
+            },
+            'Low Answerability Score': {
+                'pages': [],
+                'icon': '❓',
+                'description': 'Content doesn\'t effectively answer questions or provide clear information.',
+                'impact': 'Reduces likelihood of being cited for Q&A prompts',
+                'fix': 'Add Q&A sections, use question-format headings (H2), and provide direct answers.'
+            },
+            'Weak Structured Data': {
+                'pages': [],
+                'icon': '📊',
+                'description': 'Missing or incomplete schema.org markup limits machine readability.',
+                'impact': 'Harder for AI to extract structured information',
+                'fix': 'Implement appropriate schema types (Article, Event, Place, Product, etc.) with rich properties.'
+            },
+            'Thin Content': {
+                'pages': [],
+                'icon': '📝',
+                'description': 'Content lacks depth or comprehensive coverage.',
+                'impact': 'Lower authority and usefulness signals',
+                'fix': 'Expand content to 500+ words with detailed information, examples, and context.'
+            },
+            'Low Authority Signals': {
+                'pages': [],
+                'icon': '⭐',
+                'description': 'Lacking trust signals like citations, sources, or expert attribution.',
+                'impact': 'Reduces AI confidence in citing your content',
+                'fix': 'Add external references, data sources, expert quotes, and clear attribution.'
+            },
+            'Poor Technical Performance': {
+                'pages': [],
+                'icon': '⚡',
+                'description': 'Slow load times or technical issues impact user and AI crawler experience.',
+                'impact': 'May limit crawlability and indexing',
+                'fix': 'Optimize images, enable caching, use CDN, and reduce server response time.'
+            }
+        }
+        
+        for page in page_results:
+            url = page.get('url', '')
+            breakdown = page.get('breakdown', {})
+            extracted_data = page.get('extracted_data', {})
+            
+            # Check for organization schema
+            structured_data = breakdown.get('structured_data', {})
+            if structured_data.get('score', 0) < structured_data.get('max', 15) * 0.3:
+                issues['Weak Structured Data']['pages'].append(url)
+            
+            # Check for author
+            if not extracted_data.get('has_author', False):
+                issues['No Author Information']['pages'].append(url)
+            
+            # Check for dates
+            if not extracted_data.get('has_dates', False):
+                issues['Missing Publication Dates']['pages'].append(url)
+            
+            # Check answerability
+            answerability = breakdown.get('answerability', {})
+            if answerability.get('score', 0) < answerability.get('max', 30) * 0.5:
+                issues['Low Answerability Score']['pages'].append(url)
+            
+            # Check content quality (word count)
+            word_count = extracted_data.get('word_count', 0)
+            if word_count < 300:
+                issues['Thin Content']['pages'].append(url)
+            
+            # Check authority
+            authority = breakdown.get('authority', {})
+            if authority.get('score', 0) < authority.get('max', 18) * 0.3:
+                issues['Low Authority Signals']['pages'].append(url)
+            
+            # Check technical
+            technical = breakdown.get('technical', {})
+            if technical.get('score', 0) < technical.get('max', 10) * 0.6:
+                issues['Poor Technical Performance']['pages'].append(url)
+        
+        # Remove issues with no affected pages
+        return {k: v for k, v in issues.items() if v['pages']}
+    
+    def _truncate_url(self, url: str, max_len: int = 60) -> str:
+        """Truncate URL for display"""
+        if len(url) <= max_len:
+            return url
+        return url[:max_len-3] + '...'
 
 
 def generate_pdf_report(audit_result: Dict[str, Any], audit_type: str = 'page', detailed: bool = False) -> BytesIO:
