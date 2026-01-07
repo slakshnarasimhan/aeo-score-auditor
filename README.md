@@ -1,4 +1,4 @@
-# AEO Score Auditor
+# AEO/GEO Score Auditor
 
 A production-ready tool to analyze websites and compute an **Answer Engine Optimization (AEO) Score**, with actionable recommendations to improve visibility in AI-powered search engines like ChatGPT, Perplexity, and Google SGE.
 

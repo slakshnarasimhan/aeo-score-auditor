@@ -14,7 +14,7 @@ from api.routes import audit, scores, recommendations, domains, jobs
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="AEO Score Auditor API",
+    description="AEO/GEO Score Auditor API",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None
 )

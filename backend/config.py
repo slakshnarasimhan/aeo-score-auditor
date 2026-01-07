@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # Application
-    APP_NAME: str = "AEO Score Auditor"
+    APP_NAME: str = "AEO/GEO Score Auditor"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"

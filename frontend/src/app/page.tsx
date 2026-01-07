@@ -386,7 +386,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-start p-8 bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="w-full max-w-6xl bg-white shadow-2xl rounded-2xl p-8 mb-8">
         <h1 className="text-5xl font-bold mb-2 text-center text-gray-900">
-          AEO Score Auditor
+          AEO/GEO Score Auditor
         </h1>
         <p className="text-center text-gray-600 mb-2">
           Answer Engine Optimization Analysis Tool

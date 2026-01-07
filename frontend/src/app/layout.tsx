@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'AEO Score Auditor',
+  title: 'AEO/GEO Score Auditor',
   description: 'Analyze and optimize content for AI-powered search engines',
 }
 
