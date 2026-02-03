@@ -1,270 +1,214 @@
 # AEO/GEO Score Auditor
 
-A production-ready tool to analyze websites and compute an **Answer Engine Optimization (AEO) Score**, with actionable recommendations to improve visibility in AI-powered search engines like ChatGPT, Perplexity, and Google SGE.
+A production-ready tool to analyze websites and compute an **Answer Engine Optimization (AEO) Score**, with optional **Generative Engine Optimization (GEO)** scoring for domain-wide audits. Get actionable recommendations to improve visibility in AI-powered answer engines (e.g. ChatGPT, Perplexity, Google SGE).
 
-## 🎯 What is AEO Score?
+## What is AEO Score?
 
-The AEO Score (0-100) measures how well your content is optimized for AI answer engines across 7 key areas:
+The AEO Score (0–100) measures how well your content is optimized for AI answer engines across 7 areas:
 
-1. **Answerability** (30 pts) - Clear, direct answers to user questions
-2. **Structured Data** (20 pts) - JSON-LD schema implementation
-3. **Authority & Provenance** (15 pts) - Author information, citations, credibility
-4. **Content Quality** (10 pts) - Depth, uniqueness, freshness
-5. **Citation-ability** (10 pts) - Quotable facts, data tables, trust signals
-6. **Technical & UX** (10 pts) - Performance, mobile-friendliness, semantics
-7. **AI-Citation Score** (5 pts) - Real measurement of AI engine usage
+1. **Answerability** (30 pts) – Clear, direct answers to user questions
+2. **Structured Data** (20 pts) – JSON-LD schema implementation
+3. **Authority & Provenance** (15 pts) – Author information, citations, credibility
+4. **Content Quality** (10 pts) – Depth, uniqueness, freshness
+5. **Citation-ability** (10 pts) – Quotable facts, data tables, trust signals
+6. **Technical & UX** (10 pts) – Performance, mobile-friendliness, semantics
+7. **AI-Citation Score** (5 pts) – Signals for AI engine usage
 
-## 🚀 Features
+**Domain audits** also compute a **GEO Score** (0–100) that evaluates brand-level inclusion readiness (brand foundation, topic coverage, consistency, AI recall, trust). See [GEO_SCORING.md](./GEO_SCORING.md) for details.
 
-- **Complete Page Audits**: Crawl, extract, and analyze 50+ data points
-- **AI Citation Analysis**: Test with GPT-4, Gemini, and Perplexity to see if they cite your content
-- **Actionable Recommendations**: Get specific fixes with code snippets (JSON-LD, HTML, content)
-- **Domain Monitoring**: Track scores across multiple pages over time
-- **Beautiful Dashboard**: Visualize scores, trends, and recommendations
-- **REST API**: Programmatic access to all features
+## Features
 
-## 📋 Documentation
+- **Single-page audit** – Crawl, extract, and score one URL; returns result immediately.
+- **Domain audit** – Discover URLs (sitemap or crawl), audit multiple pages, aggregated score + GEO. Progress via SSE; result when complete.
+- **PDF report** – Generate a downloadable PDF from any audit result (page or domain).
+- **Content-aware scoring** – Content classification (informational, experiential, etc.) and per-profile scoring.
+- **REST API** – All operations available via `/api/v1/audit/*`, `/api/v1/scores`, etc.
+- **Web UI** – Next.js frontend: single-page and “Entire Domain” tabs, live progress for domain audits, score breakdown, PDF download.
 
-- [Scoring Framework](./AEO_SCORING_FRAMEWORK.md) - Detailed breakdown of the 0-100 scoring system
-- [Data Extraction Spec](./DATA_EXTRACTION_SPEC.md) - What data we extract and how
-- [AI Citation Module](./AI_CITATION_MODULE.md) - How we test AI engine citations
-- [Recommendation Engine](./RECOMMENDATION_ENGINE.md) - How recommendations are generated
-- [API Reference](./API_DATA_MODELS.md) - Complete API documentation
-- [Frontend Spec](./FRONTEND_SPEC.md) - UI/UX design specifications
-- [MVP Roadmap](./MVP_ROADMAP.md) - 8-week implementation plan
+## Documentation
 
-## 🛠️ Tech Stack
+- [AEO Scoring Framework](./AEO_SCORING_FRAMEWORK.md) – 0–100 scoring breakdown
+- [GEO Scoring](./GEO_SCORING.md) – Domain-level GEO model
+- [Domain Crawling Guide](./DOMAIN_CRAWLING_GUIDE.md) – How URL discovery and domain audits work
+- [Data Extraction Spec](./DATA_EXTRACTION_SPEC.md) – What data is extracted
+- [API Data Models](./API_DATA_MODELS.md) – API shapes and usage
+- [Recommendation Engine](./RECOMMENDATION_ENGINE.md) – How recommendations are generated
 
-**Backend**:
-- Python 3.11+
-- FastAPI
-- Playwright (crawling)
-- BeautifulSoup4 (parsing)
-- MongoDB (data storage)
-- Redis (caching, queues)
-- Celery (async tasks)
-- Sentence Transformers (semantic analysis)
+## Tech Stack
 
-**Frontend**:
-- Next.js 14
-- React 18
-- TypeScript
-- TailwindCSS
-- React Query
-- Recharts
+**Backend**
 
-**AI Engines**:
-- OpenAI (GPT-4)
-- Google (Gemini)
-- Perplexity
-- Anthropic (Claude)
+- Python 3.11+, FastAPI, Uvicorn
+- **Crawling**: Playwright (optional), BeautifulSoup, lxml; configurable fetcher: `hybrid` (default), `playwright`, or `http`
+- **Scoring**: Custom AEO calculator + GEO scorer (domain audits)
+- **Reporting**: ReportLab (PDF)
+- **Optional**: MongoDB, Redis, Celery (present in Docker; core single-page and domain audit run in-process with in-memory progress tracking)
 
-## 📦 Installation
+**Frontend**
+
+- Next.js 14, React 18, TypeScript, TailwindCSS
+- React Query, Recharts, Framer Motion, Radix UI
+
+**Config**
+
+- `.env` for API keys and options (see below). No `.env.example` in repo; create `.env` as needed.
+
+## Installation
 
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 18+
-- MongoDB
-- Redis
-- API keys for AI services
+- Node.js 18+ (for frontend)
+- Docker & Docker Compose (for full stack with MongoDB, Redis, worker)
+- Optional: API keys for AI citation features (OpenAI, Google, Perplexity, Anthropic)
 
-### Quick Start with Docker
+### Quick start with Docker
 
 ```bash
-# Clone repository
 git clone <repo-url>
-cd aeo
+cd aeo-score-auditor
 
-# Copy environment file
-cp .env.example .env
+# Create .env if you need API keys or overrides (optional)
+# Example: OPENAI_API_KEY=sk-... FETCHER_MODE=hybrid
 
-# Edit .env and add your API keys
-nano .env
-
-# Start all services
 docker-compose up -d
-
-# Access the application
-# Frontend: http://localhost:3000
-# API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
 ```
 
-### Manual Installation
+- **Frontend**: http://localhost:3000  
+- **API**: http://localhost:8000  
+- **API docs**: http://localhost:8000/docs  
+- **Health**: http://localhost:8000/health  
 
-#### Backend
+Frontend uses `NEXT_PUBLIC_API_URL` in Docker (default in compose points at host). For same-machine use, ensure the frontend can reach the backend (e.g. correct host/port).
+
+### Manual setup
+
+**Backend**
 
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+# Or use requirements.minimal.txt (includes reportlab for PDF)
+playwright install chromium   # if using hybrid/playwright fetcher
 
-# Install Playwright browsers
-playwright install chromium
-
-# Start API server
-uvicorn main:app --reload
-
-# Start Celery worker (in another terminal)
-celery -A workers.celery_app worker --loglevel=info
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-#### Frontend
+**Frontend**
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-## 🎮 Usage
+Open http://localhost:3000. Set `NEXT_PUBLIC_API_URL` if the API is not at `http://localhost:8000`.
 
-### Web Interface
+### Environment variables (optional)
 
-1. Navigate to `http://localhost:3000`
-2. Enter a URL to audit
-3. View the score breakdown and recommendations
-4. Implement fixes and re-audit to track improvements
+Create a `.env` in the project root (or set in Docker). Backend reads:
+
+- `MONGODB_URL`, `REDIS_URL`, `CELERY_*` – used when MongoDB/Redis/Celery are running
+- `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `PERPLEXITY_API_KEY`, `ANTHROPIC_API_KEY` – for AI citation features
+- `FETCHER_MODE` – `hybrid` (default), `playwright`, or `http`
+- `DEBUG`, `ENVIRONMENT` – app behavior
+
+## Usage
+
+### Web UI
+
+1. Open http://localhost:3000
+2. **Single page**: enter URL → “Audit” → result and breakdown
+3. **Entire domain**: “Entire Domain” tab → enter domain (e.g. `https://example.com`) → “Audit Entire Domain” → follow progress; when done, view aggregated score, GEO (if applicable), best/worst pages, and download PDF
 
 ### API
 
+**Single-page audit (synchronous)**  
+Returns full result in the response.
+
 ```bash
-# Audit a page
 curl -X POST http://localhost:8000/api/v1/audit/page \
   -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com/page",
-    "options": {
-      "include_ai_citation": true,
-      "wait_for_completion": true
-    }
-  }'
-
-# Get recommendations
-curl http://localhost:8000/api/v1/recommendations?url=https://example.com/page
+  -d '{"url": "https://example.com/page"}'
 ```
 
-### Python Client
+Response includes `result` with `overall_score`, `grade`, `breakdown`, `recommendations`, etc.
 
-```python
-from aeo_client import AEOClient
-
-client = AEOClient('http://localhost:8000', api_key='your_key')
-
-# Audit a page
-result = client.audit_page('https://example.com/page', wait=True)
-print(f"Score: {result['overall_score']} ({result['grade']})")
-
-# Get recommendations
-recs = client.get_recommendations('https://example.com/page')
-for rec in recs['quick_wins']:
-    print(f"✓ {rec['title']} - Impact: {rec['impact']}")
-```
-
-## 🧪 Testing
+**Domain audit (asynchronous)**  
+Returns a `job_id`; poll progress via SSE or fetch result when complete.
 
 ```bash
-# Backend tests
+# Start domain audit
+curl -X POST http://localhost:8000/api/v1/audit/domain \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "https://example.com", "options": {"max_pages": 20}}'
+# -> { "job_id": "job_domain_...", "status": "queued", "progress_url": "/api/v1/audit/domain/progress/{job_id}" }
+
+# Stream progress (SSE)
+curl -N http://localhost:8000/api/v1/audit/domain/progress/{job_id}
+
+# Get final result (when status is completed/failed)
+curl http://localhost:8000/api/v1/audit/domain/result/{job_id}
+```
+
+Domain result includes `overall_score`, `grade`, `pages_audited`, `breakdown`, `page_results`, `best_page`, `worst_page`, and when computed `geo_score`.
+
+**PDF report**  
+Generate a PDF from any audit result (e.g. from page or domain result).
+
+```bash
+curl -X POST http://localhost:8000/api/v1/audit/pdf \
+  -H "Content-Type: application/json" \
+  -d '{"audit_result": <paste audit result JSON>, "audit_type": "domain", "detailed": false}' \
+  --output report.pdf
+```
+
+### How domain URL discovery works
+
+1. **Sitemap**: Tries `{domain}/sitemap.xml`, `sitemap_index.xml`, `sitemap-index.xml`. If found, parses URLs (and follows sitemap indexes). Ensure your sitemap only lists URLs for the domain you are auditing.
+2. **Crawl**: If no sitemap, crawls from the homepage and follows same-domain links.
+3. Pages are capped by `max_pages` (default 100 in the API). See [DOMAIN_CRAWLING_GUIDE.md](./DOMAIN_CRAWLING_GUIDE.md).
+
+## Testing
+
+```bash
+# Backend
 cd backend
 pytest
 
-# Frontend tests
+# Frontend
 cd frontend
 npm test
-
-# E2E tests
-npm run test:e2e
 ```
 
-## 📊 Example Results
+## Example output
 
-```
-Overall Score: 78.5 (B+)
+- **Page**: Overall score (e.g. 78/100, grade B+), category breakdown, recommendations.
+- **Domain**: Aggregated score, pages audited, best/worst page, GEO score and components, PDF export.
 
-Breakdown:
-✓ Answerability: 24/30 (80%)
-✓ Structured Data: 14/20 (70%)
-✓ Authority: 11/15 (73%)
-✓ Content Quality: 8/10 (80%)
-✓ Citation-ability: 7/10 (70%)
-✓ Technical: 9/10 (90%)
-✓ AI-Citation: 3.5/5 (70%)
+## Project structure (high level)
 
-Top Recommendations:
-1. Add FAQPage Schema - Impact: +8.0 pts, Time: 20 min
-2. Implement Article Schema - Impact: +7.0 pts, Time: 15 min
-3. Add TL;DR Summary - Impact: +6.0 pts, Time: 15 min
-```
+- `backend/` – FastAPI app, audit pipeline, crawler (domain + page), scoring (AEO + GEO), reporting (PDF, recommendations)
+- `frontend/` – Next.js app (single page + domain audit UI)
+- `docker-compose.yml` – backend, frontend, MongoDB, Redis, Celery worker (optional for core audits)
+- Docs: `AEO_SCORING_FRAMEWORK.md`, `GEO_SCORING.md`, `DOMAIN_CRAWLING_GUIDE.md`, `API_DATA_MODELS.md`, etc.
 
-## 🗺️ Roadmap
+## Roadmap
 
-### MVP (Weeks 1-8) ✅
-- Core crawler and data extraction
-- Complete scoring engine
-- Recommendation generator
-- REST API
-- Basic frontend dashboard
-- AI citation analysis (simplified)
+- **Done**: Single-page and domain audits, AEO + GEO scoring, SSE progress, PDF reports, content-aware scoring, configurable fetcher.
+- **Planned**: Richer AI citation integration, persistent job storage, recommendation tracking, historical trends.
 
-### Phase 2 (Weeks 9-12)
-- Advanced AI citation (verbatim quotes, fact attribution)
-- Batch domain auditing (100+ pages)
-- Scheduled audits
-- Email notifications
-- PDF/CSV exports
+## License
 
-### Phase 3 (Weeks 13-16)
-- Multi-user support
-- Team collaboration
-- Historical trend analysis
-- Competitive analysis
-- WordPress/CMS plugins
+MIT – see [LICENSE](./LICENSE).
 
-## 💰 Pricing & API Costs
+## Support
 
-**API Costs (Estimated)**:
-- Without AI citation: ~$0.05 per audit
-- With AI citation: ~$0.50-1.00 per audit
-
-**Infrastructure** (monthly):
-- MongoDB: $25-50
-- Redis: $15-30
-- Hosting: $100-200
-- **Total**: ~$150-300/month
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
-
-## 📄 License
-
-MIT License - see [LICENSE](./LICENSE) for details
-
-## 📞 Support
-
-- Documentation: [docs.aeoscore.com](https://docs.aeoscore.com)
-- Issues: [GitHub Issues](https://github.com/yourusername/aeo/issues)
-- Email: support@aeoscore.com
-
-## 🙏 Acknowledgments
-
-Built with inspiration from:
-- Schema.org structured data specifications
-- Google's Search Quality Guidelines
-- OpenAI's best practices for AI-friendly content
-- The SEO and AEO community
+- Open a [GitHub issue](https://github.com/yourusername/aeo-score-auditor/issues) for bugs or feature requests.
+- See the documentation files in the repo for detailed behavior and API.
 
 ---
 
-**Made with ❤️ for better AI discoverability**
-
+**Made for better AI discoverability**
