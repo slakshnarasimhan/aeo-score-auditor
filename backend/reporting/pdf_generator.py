@@ -1,656 +1,716 @@
 """
-PDF Report Generator for AEO Audit Results
+Chapter-book PDF Report Generator for AEO Audit Results.
+Mirrors the frontend ReportBook layout: Cover → Summary → Categories → GEO → Actions.
 """
 from io import BytesIO
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
+
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.units import inch
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, ListFlowable, ListItem
+from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    BaseDocTemplate,
+    Frame,
+    NextPageTemplate,
+    PageBreak,
+    PageTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
+from reportlab.platypus.flowables import Flowable
 from loguru import logger
+
+from reporting.report_utils import (
+    CATEGORY_ACTIONS,
+    format_category_name,
+    get_category_description,
+    get_score_label,
+    grade_color_hex,
+    score_color_hex,
+)
 from reporting.recommendation_generator import RecommendationGenerator
+
+# Palette aligned with frontend report book
+INDIGO = HexColor("#4f46e5")
+INDIGO_LIGHT = HexColor("#a5b4fc")
+VIOLET = HexColor("#7c3aed")
+STONE_900 = HexColor("#1c1917")
+STONE_600 = HexColor("#57534e")
+STONE_400 = HexColor("#a8a29e")
+PAPER = HexColor("#faf9f7")
+EMERALD = HexColor("#10b981")
+ROSE = HexColor("#f43f5e")
+
+
+class ProgressBar(Flowable):
+    """Horizontal score progress bar."""
+
+    def __init__(self, percentage: float, width: float = 4.5 * inch, height: float = 10):
+        super().__init__()
+        self.percentage = max(0, min(100, percentage))
+        self.width = width
+        self.height = height
+
+    def wrap(self, availWidth, availHeight):
+        return self.width, self.height
+
+    def draw(self):
+        canvas = self.canv
+        canvas.setFillColor(HexColor("#e7e5e4"))
+        canvas.roundRect(0, 0, self.width, self.height, 4, fill=1, stroke=0)
+        fill_width = self.width * (self.percentage / 100)
+        if fill_width > 0:
+            canvas.setFillColor(HexColor(score_color_hex(self.percentage)))
+            canvas.roundRect(0, 0, fill_width, self.height, 4, fill=1, stroke=0)
+
+
+class ChapterMarker(Flowable):
+    """Invisible marker that sets the current chapter number for page headers."""
+
+    def __init__(self, chapter_num: int):
+        super().__init__()
+        self.chapter_num = chapter_num
+
+    def wrap(self, availWidth, availHeight):
+        return 0, 0
+
+    def draw(self):
+        self.canv._doctemplate.chapter_num = self.chapter_num
+
+
+class ChapterBookDoc(BaseDocTemplate):
+    """Document with chapter accent bar and page counter."""
+
+    def __init__(self, buffer, total_chapters: int, **kwargs):
+        self.total_chapters = total_chapters
+        self.chapter_num = 1
+        BaseDocTemplate.__init__(self, buffer, **kwargs)
 
 
 class PDFReportGenerator:
-    """Generates PDF reports from audit results"""
-    
+    """Generates chapter-book PDF reports from audit results."""
+
     def __init__(self):
         self.styles = getSampleStyleSheet()
         self._setup_custom_styles()
         self.rec_generator = RecommendationGenerator()
-    
+
     def _setup_custom_styles(self):
-        """Setup custom paragraph styles"""
-        # Check if style already exists to avoid conflicts
-        if 'ReportTitle' not in self.styles.byName:
-            self.styles.add(ParagraphStyle(
-                name='ReportTitle',
-                parent=self.styles['Heading1'],
-                fontSize=24,
-                textColor=colors.HexColor('#667eea'),
-                spaceAfter=30,
-                alignment=TA_CENTER
-            ))
-        
-        # Check and add styles only if they don't exist
-        if 'ReportHeading' not in self.styles.byName:
-            self.styles.add(ParagraphStyle(
-                name='ReportHeading',
-                parent=self.styles['Heading2'],
-                fontSize=16,
-                textColor=colors.HexColor('#667eea'),
-                spaceAfter=12,
-                spaceBefore=12
-            ))
-        
-        if 'ReportSubHeading' not in self.styles.byName:
-            self.styles.add(ParagraphStyle(
-                name='ReportSubHeading',
-                parent=self.styles['Heading3'],
-                fontSize=14,
-                textColor=colors.HexColor('#555'),
-                spaceAfter=8,
-                spaceBefore=8
-            ))
-        
-        if 'ReportScore' not in self.styles.byName:
-            self.styles.add(ParagraphStyle(
-                name='ReportScore',
-                parent=self.styles['Normal'],
-                fontSize=32,
-                textColor=colors.HexColor('#667eea'),
+        custom = {
+            "ChapterKicker": dict(
+                parent=self.styles["Normal"],
+                fontSize=8,
+                textColor=INDIGO,
+                spaceAfter=4,
+                fontName="Helvetica-Bold",
+            ),
+            "ChapterTitle": dict(
+                parent=self.styles["Heading1"],
+                fontSize=22,
+                textColor=STONE_900,
+                spaceAfter=14,
+                fontName="Helvetica-Bold",
+            ),
+            "ChapterSubtitle": dict(
+                parent=self.styles["Normal"],
+                fontSize=11,
+                textColor=STONE_600,
+                spaceAfter=10,
+            ),
+            "BodyText": dict(
+                parent=self.styles["Normal"],
+                fontSize=10,
+                textColor=STONE_900,
+                leading=14,
+            ),
+            "InsightBullet": dict(
+                parent=self.styles["Normal"],
+                fontSize=10,
+                textColor=STONE_600,
+                leftIndent=14,
+                spaceAfter=6,
+                bulletIndent=0,
+            ),
+            "SectionLabel": dict(
+                parent=self.styles["Normal"],
+                fontSize=8,
+                textColor=STONE_400,
+                spaceAfter=6,
+                fontName="Helvetica-Bold",
+            ),
+            "CoverKicker": dict(
+                parent=self.styles["Normal"],
+                fontSize=9,
+                textColor=INDIGO,
                 alignment=TA_CENTER,
-                fontName='Helvetica-Bold'
-            ))
-    
-    def generate_report(self, audit_result: Dict[str, Any], audit_type: str = 'page', detailed: bool = False) -> BytesIO:
-        """
-        Generate PDF report from audit results
-        
-        Args:
-            audit_result: Complete audit result dictionary
-            audit_type: 'page' or 'domain'
-            detailed: If True, includes all page details and subsection breakdowns
-            
-        Returns:
-            BytesIO buffer with PDF content
-        """
+                spaceAfter=8,
+                fontName="Helvetica-Bold",
+            ),
+            "CoverTitle": dict(
+                parent=self.styles["Heading1"],
+                fontSize=20,
+                textColor=STONE_900,
+                alignment=TA_CENTER,
+                spaceAfter=6,
+                fontName="Helvetica-Bold",
+            ),
+            "CoverScore": dict(
+                parent=self.styles["Normal"],
+                fontSize=42,
+                textColor=STONE_900,
+                alignment=TA_CENTER,
+                fontName="Helvetica-Bold",
+                spaceAfter=4,
+            ),
+            "CoverGrade": dict(
+                parent=self.styles["Normal"],
+                fontSize=36,
+                alignment=TA_CENTER,
+                fontName="Helvetica-Bold",
+                spaceAfter=6,
+            ),
+            "Footer": dict(
+                parent=self.styles["Normal"],
+                fontSize=8,
+                textColor=STONE_400,
+                alignment=TA_CENTER,
+            ),
+        }
+        for name, kwargs in custom.items():
+            if name not in self.styles.byName:
+                self.styles.add(ParagraphStyle(name=name, **kwargs))
+
+    def _chapter_page_decorator(self, canvas, doc):
+        canvas.saveState()
+        page_w, page_h = letter
+        canvas.setFillColor(INDIGO_LIGHT)
+        canvas.rect(0.55 * inch, 0.55 * inch, 0.06 * inch, page_h - 1.1 * inch, fill=1, stroke=0)
+        canvas.setFillColor(PAPER)
+        canvas.rect(0.75 * inch, 0.55 * inch, page_w - 1.35 * inch, page_h - 1.1 * inch, fill=1, stroke=0)
+        chapter = min(getattr(doc, "chapter_num", 1), doc.total_chapters)
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(STONE_400)
+        canvas.drawRightString(page_w - 0.75 * inch, page_h - 0.65 * inch, f"{chapter} / {doc.total_chapters}")
+        canvas.restoreState()
+
+    def _build_chapters(self, audit_result: Dict[str, Any], audit_type: str) -> List[Dict[str, Any]]:
+        chapters: List[Dict[str, Any]] = [
+            {"type": "cover"},
+            {"type": "summary"},
+        ]
+        for category in audit_result.get("breakdown", {}):
+            chapters.append({"type": "category", "category": category})
+        if audit_type == "domain" and audit_result.get("geo_score"):
+            chapters.append({"type": "geo"})
+        chapters.append({"type": "actions"})
+        return chapters
+
+    def generate_report(
+        self, audit_result: Dict[str, Any], audit_type: str = "page", detailed: bool = False
+    ) -> BytesIO:
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, 
-                               rightMargin=72, leftMargin=72,
-                               topMargin=72, bottomMargin=72)
-        
-        story = []
-        
-        # Title
-        title = Paragraph("AEO/GEO Score Auditor Report", self.styles['ReportTitle'])
-        story.append(title)
-        story.append(Spacer(1, 0.2*inch))
-        
-        # Date and URL
-        current_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
-        date_text = Paragraph(f"Generated: {current_date}", self.styles['Normal'])
-        story.append(date_text)
-        story.append(Spacer(1, 0.1*inch))
-        
-        if audit_type == 'page':
-            url = audit_result.get('url', 'N/A')
-        else:
-            url = audit_result.get('domain', 'N/A')
-        
-        url_text = Paragraph(f"<b>URL:</b> {url}", self.styles['Normal'])
-        story.append(url_text)
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Overall Score
-        overall_score = audit_result.get('overall_score', 0)
-        grade = audit_result.get('grade', 'F')
-        
-        score_text = Paragraph(f"<b>Overall AEO Score</b>", self.styles['ReportHeading'])
-        story.append(score_text)
-        story.append(Spacer(1, 0.1*inch))
-        
-        score_value = Paragraph(f"{overall_score}/100", self.styles['ReportScore'])
-        story.append(score_value)
-        
-        grade_text = Paragraph(f"<b>Grade: {grade}</b>", self.styles['ReportHeading'])
-        story.append(grade_text)
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Domain audit specific info
-        if audit_type == 'domain':
-            pages_audited = audit_result.get('pages_audited', 0)
-            pages_successful = audit_result.get('pages_successful', 0)
-            
-            domain_info = [
-                ['Pages Audited', f"{pages_successful}/{pages_audited}"],
-                ['Domain', audit_result.get('domain', 'N/A')]
-            ]
-            
-            domain_table = Table(domain_info, colWidths=[3*inch, 3*inch])
-            domain_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f0f0f0')),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 11),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-                ('GRID', (0, 0), (-1, -1), 1, colors.grey)
-            ]))
-            story.append(domain_table)
-            story.append(Spacer(1, 0.3*inch))
-        
-        # Score Breakdown
-        breakdown_heading = Paragraph("<b>Score Breakdown by Category</b>", self.styles['ReportHeading'])
-        story.append(breakdown_heading)
-        story.append(Spacer(1, 0.2*inch))
-        
-        breakdown = audit_result.get('breakdown', {})
-        breakdown_data = [['Category', 'Score', 'Percentage']]
-        
-        for category, data in breakdown.items():
-            category_name = category.replace('_', ' ').title()
-            score = data.get('score', 0)
-            max_score = data.get('max', 100)
-            percentage = data.get('percentage', 0)
-            
-            breakdown_data.append([
-                category_name,
-                f"{score}/{max_score}",
-                f"{percentage:.1f}%"
-            ])
-        
-        breakdown_table = Table(breakdown_data, colWidths=[3*inch, 2*inch, 2*inch])
-        breakdown_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')])
-        ]))
-        story.append(breakdown_table)
-        story.append(Spacer(1, 0.3*inch))
-        
-        # Detailed Breakdown
-        detailed_heading = Paragraph("<b>Detailed Category Analysis</b>", self.styles['ReportHeading'])
-        story.append(detailed_heading)
-        story.append(Spacer(1, 0.2*inch))
-        
-        for category, data in breakdown.items():
-            category_name = category.replace('_', ' ').title()
-            score = data.get('score', 0)
-            max_score = data.get('max', 100)
-            percentage = data.get('percentage', 0)
-            
-            # Category header
-            cat_header = Paragraph(f"<b>{category_name}</b> - {score}/{max_score} ({percentage:.1f}%)", 
-                                 self.styles['ReportSubHeading'])
-            story.append(cat_header)
-            
-            # Sub-scores
-            sub_scores = data.get('sub_scores', {})
-            if sub_scores:
-                sub_data = [['Metric', 'Score']]
-                for sub_cat, sub_score in sub_scores.items():
-                    sub_name = sub_cat.replace('_', ' ').title()
-                    sub_data.append([sub_name, str(sub_score)])
-                
-                sub_table = Table(sub_data, colWidths=[4*inch, 2*inch])
-                sub_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e0e0e0')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 9),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey)
-                ]))
-                story.append(sub_table)
-            
-            story.append(Spacer(1, 0.2*inch))
-        
-        # Action Plan - Grouped by Issue Type (for domain audits with detailed=True)
-        if audit_type == 'domain' and detailed:
-            page_results = audit_result.get('page_results', [])
-            if page_results:
-                story.append(PageBreak())
-                action_heading = Paragraph("<b>📋 Action Plan - Grouped by Issue Type</b>", self.styles['ReportHeading'])
-                story.append(action_heading)
-                story.append(Spacer(1, 0.1*inch))
-                
-                intro_text = Paragraph(
-                    f"<i>Rather than fixing pages one by one, tackle issues that affect multiple pages together. "
-                    f"This analysis covers all {len(page_results)} audited pages.</i>",
-                    self.styles['Normal']
-                )
-                story.append(intro_text)
-                story.append(Spacer(1, 0.2*inch))
-                
-                # Group pages by issues
-                issue_groups = self._group_pages_by_issues(page_results)
-                
-                if not issue_groups:
-                    no_issues_text = Paragraph(
-                        "<i>Great! No major issues detected across your pages.</i>",
-                        self.styles['Normal']
-                    )
-                    story.append(no_issues_text)
-                else:
-                    # Display grouped recommendations
-                    for issue_type, issue_data in sorted(issue_groups.items(), key=lambda x: len(x[1]['pages']), reverse=True):
-                        if not issue_data['pages']:
-                            continue
-                        
-                        affected_count = len(issue_data['pages'])
-                        
-                        # Issue heading with count
-                        issue_heading = Paragraph(
-                            f"<b>{issue_data['icon']} {issue_type}</b>",
-                            self.styles['ReportSubHeading']
-                        )
-                        story.append(issue_heading)
-                        
-                        affected_para = Paragraph(
-                            f"<font color='#dc2626'><b>{affected_count} page(s) affected</b></font>",
-                            self.styles['Normal']
-                        )
-                        story.append(affected_para)
-                        story.append(Spacer(1, 0.08*inch))
-                        
-                        # Description and impact
-                        desc_text = Paragraph(
-                            f"<b>Why it matters:</b> {issue_data['description']}",
-                            self.styles['Normal']
-                        )
-                        story.append(desc_text)
-                        story.append(Spacer(1, 0.05*inch))
-                        
-                        impact_text = Paragraph(
-                            f"<b>Potential impact:</b> {issue_data['impact']}",
-                            self.styles['Normal']
-                        )
-                        story.append(impact_text)
-                        story.append(Spacer(1, 0.08*inch))
-                        
-                        # How to fix
-                        fix_text = Paragraph(
-                            f"<b>How to fix:</b> {issue_data['fix']}",
-                            ParagraphStyle(name='FixText', parent=self.styles['Normal'],
-                                         textColor=colors.HexColor('#059669'))
-                        )
-                        story.append(fix_text)
-                        story.append(Spacer(1, 0.08*inch))
-                        
-                        # Affected pages
-                        pages_heading = Paragraph(
-                            f"<b>Affected pages:</b>",
-                            self.styles['Normal']
-                        )
-                        story.append(pages_heading)
-                        story.append(Spacer(1, 0.05*inch))
-                        
-                        # Create bullet list of affected pages (show first 10, mention total)
-                        display_pages = issue_data['pages'][:10]
-                        for page_url in display_pages:
-                            page_item = Paragraph(
-                                f"• {self._truncate_url(page_url, 80)}",
-                                ParagraphStyle(name='PageItem', parent=self.styles['Normal'],
-                                             fontSize=8, leftIndent=10, textColor=colors.HexColor('#4b5563'))
-                            )
-                            story.append(page_item)
-                        
-                        if affected_count > 10:
-                            more_pages = Paragraph(
-                                f"<i>...and {affected_count - 10} more page(s)</i>",
-                                ParagraphStyle(name='MorePages', parent=self.styles['Normal'],
-                                             fontSize=8, leftIndent=10, textColor=colors.HexColor('#6b7280'))
-                            )
-                            story.append(more_pages)
-                        
-                        story.append(Spacer(1, 0.25*inch))
-        
-        # Recommendations (if available)
-        # Generate detailed recommendations using our recommendation engine
-        detailed_recommendations = self.rec_generator.generate_recommendations(audit_result, top_n=10)
-        
-        # Fallback to simple recommendations if detailed ones aren't available
-        if not detailed_recommendations:
-            detailed_recommendations = audit_result.get('recommendations', [])
-        
-        if detailed_recommendations:
-            story.append(PageBreak())
-            rec_heading = Paragraph("<b>💡 Prioritized Improvement Recommendations</b>", self.styles['ReportHeading'])
-            story.append(rec_heading)
-            story.append(Spacer(1, 0.1*inch))
-            
-            intro_text = Paragraph(
-                "<i>Based on your audit results, here are the top recommendations to improve your AEO score, "
-                "prioritized by potential impact:</i>",
-                self.styles['Normal']
-            )
-            story.append(intro_text)
-            story.append(Spacer(1, 0.2*inch))
-            
-            for i, rec in enumerate(detailed_recommendations[:10], 1):
-                # Check if this is a detailed recommendation with tips
-                if 'tips' in rec:
-                    rec_title = rec.get('title', 'Improvement')
-                    percentage = rec.get('percentage', 0)
-                    current = rec.get('current_score', 0)
-                    max_s = rec.get('max_score', 100)
-                    
-                    # Recommendation header
-                    rec_header = f"<b>{i}. {rec_title}</b><br/>"
-                    rec_header += f"<font color='#dc2626'>Current: {current}/{max_s} ({percentage:.0f}% complete)</font>"
-                    
-                    rec_para = Paragraph(rec_header, self.styles['Normal'])
-                    story.append(rec_para)
-                    story.append(Spacer(1, 0.05*inch))
-                    
-                    # Action items
-                    tips = rec.get('tips', [])
-                    if tips:
-                        action_label = Paragraph(
-                            "<b>Action Items:</b>",
-                            ParagraphStyle(name='ActionLabel', parent=self.styles['Normal'],
-                                         fontSize=9, textColor=colors.HexColor('#059669'))
-                        )
-                        story.append(action_label)
-                        
-                        for tip in tips:
-                            tip_para = Paragraph(
-                                f"  • {tip}",
-                                ParagraphStyle(name='TipItem', parent=self.styles['Normal'],
-                                             fontSize=9, leftIndent=15, spaceAfter=3)
-                            )
-                            story.append(tip_para)
-                    
-                    story.append(Spacer(1, 0.15*inch))
-                else:
-                    # Fallback to simple format
-                    rec_title = rec.get('title', 'Improvement')
-                    priority = rec.get('priority', 0)
-                    current = rec.get('current_score', 0)
-                    max_s = rec.get('max_score', 100)
-                    potential = rec.get('potential_gain', 0)
-                    
-                    rec_text = f"<b>{i}. {rec_title}</b><br/>"
-                    rec_text += f"Current: {current}/{max_s} | Potential Gain: {potential} points | Priority: {priority}%"
-                    
-                    rec_para = Paragraph(rec_text, self.styles['Normal'])
-                    story.append(rec_para)
-                    story.append(Spacer(1, 0.15*inch))
-        
-        # Domain-specific: Best/Worst pages
-        if audit_type == 'domain':
-            best_page = audit_result.get('best_page')
-            worst_page = audit_result.get('worst_page')
-            
-            if best_page or worst_page:
-                story.append(PageBreak())
-                pages_heading = Paragraph("<b>Page Performance Summary</b>", self.styles['ReportHeading'])
-                story.append(pages_heading)
-                story.append(Spacer(1, 0.2*inch))
-                
-                if best_page:
-                    best_text = Paragraph(
-                        f"<b>🏆 Best Performing Page</b><br/>"
-                        f"URL: {best_page.get('url', 'N/A')}<br/>"
-                        f"Score: {best_page.get('overall_score', 0)}/100",
-                        self.styles['Normal']
-                    )
-                    story.append(best_text)
-                    story.append(Spacer(1, 0.2*inch))
-                
-                if worst_page:
-                    worst_text = Paragraph(
-                        f"<b>📉 Needs Most Improvement</b><br/>"
-                        f"URL: {worst_page.get('url', 'N/A')}<br/>"
-                        f"Score: {worst_page.get('overall_score', 0)}/100",
-                        self.styles['Normal']
-                    )
-                    story.append(worst_text)
-            
-            # GEO Score Section (for domain audits only)
-            geo_score = audit_result.get('geo_score')
-            if geo_score:
-                story.append(PageBreak())
-                geo_heading = Paragraph(
-                    "<b>🤖 GEO Score - Generative Engine Optimization</b>",
-                    self.styles['ReportHeading']
-                )
-                story.append(geo_heading)
-                story.append(Spacer(1, 0.2*inch))
-                
-                # GEO Score display
-                geo_score_value = geo_score.get('geo_score', 0)
-                geo_score_text = Paragraph(
-                    f"<font size=36 color='#6366f1'><b>{geo_score_value}/100</b></font>",
-                    self.styles['Normal']
-                )
-                story.append(geo_score_text)
-                story.append(Spacer(1, 0.1*inch))
-                
-                # Summary
-                summary_text = Paragraph(
-                    f"<i>{geo_score.get('summary', '')}</i>",
-                    self.styles['Normal']
-                )
-                story.append(summary_text)
-                story.append(Spacer(1, 0.1*inch))
-                
-                # Brand info
-                brand_info = Paragraph(
-                    f"Brand: <b>{geo_score.get('brand_name', 'N/A')}</b> • "
-                    f"{geo_score.get('pages_analyzed', 0)} pages analyzed",
-                    self.styles['Normal']
-                )
-                story.append(brand_info)
-                story.append(Spacer(1, 0.2*inch))
-                
-                # Component breakdown
-                components_heading = Paragraph(
-                    "<b>GEO Component Breakdown</b>",
-                    self.styles['ReportSubHeading']
-                )
-                story.append(components_heading)
-                story.append(Spacer(1, 0.1*inch))
-                
-                components = geo_score.get('components', {})
-                geo_data = [['Component', 'Score', 'Max', '%']]
-                
-                for comp_name, comp_data in components.items():
-                    display_name = comp_name.replace('_', ' ').title()
-                    score = comp_data.get('score', 0)
-                    max_score = comp_data.get('max', 0)
-                    percentage = (score / max_score * 100) if max_score > 0 else 0
-                    
-                    geo_data.append([
-                        display_name,
-                        f"{score:.1f}",
-                        str(max_score),
-                        f"{percentage:.0f}%"
-                    ])
-                
-                geo_table = Table(geo_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
-                geo_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6366f1')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')])
-                ]))
-                story.append(geo_table)
-                story.append(Spacer(1, 0.2*inch))
-                
-                # Recommended Actions
-                actions = geo_score.get('recommended_actions', [])
-                if actions:
-                    actions_heading = Paragraph(
-                        "<b>💡 Recommended Actions</b>",
-                        self.styles['ReportSubHeading']
-                    )
-                    story.append(actions_heading)
-                    story.append(Spacer(1, 0.1*inch))
-                    
-                    for action in actions:
-                        action_item = Paragraph(
-                            f"▸ {action}",
-                            self.styles['Normal']
-                        )
-                        story.append(action_item)
-                        story.append(Spacer(1, 0.05*inch))
-                    
-                    story.append(Spacer(1, 0.1*inch))
-                
-                # Disclaimer
-                disclaimer = Paragraph(
-                    "<i>Note: GEO Score estimates brand inclusion readiness for AI systems. "
-                    "It does not predict rankings or guarantee citations.</i>",
-                    self.styles['Normal']
-                )
-                story.append(disclaimer)
-        
-        # Footer
-        story.append(Spacer(1, 0.3*inch))
-        footer = Paragraph(
-            f"<i>Report generated by AEO/GEO Score Auditor | "
-            f"https://github.com/slakshnarasimhan/aeo-score-auditor</i>",
-            ParagraphStyle(name='Footer', parent=self.styles['Normal'],
-                          fontSize=8, textColor=colors.grey, alignment=TA_CENTER)
+        chapters = self._build_chapters(audit_result, audit_type)
+
+        doc = ChapterBookDoc(
+            buffer,
+            total_chapters=len(chapters),
+            pagesize=letter,
+            rightMargin=0.85 * inch,
+            leftMargin=0.85 * inch,
+            topMargin=0.85 * inch,
+            bottomMargin=0.75 * inch,
         )
-        story.append(footer)
-        
-        # Build PDF
+
+        frame = Frame(
+            doc.leftMargin,
+            doc.bottomMargin,
+            doc.width,
+            doc.height,
+            id="chapter_frame",
+        )
+        template = PageTemplate(id="chapter", frames=[frame], onPage=self._chapter_page_decorator)
+        doc.addPageTemplates([template])
+
+        story: List[Any] = []
+        for i, chapter in enumerate(chapters):
+            if i > 0:
+                story.append(PageBreak())
+            story.append(ChapterMarker(i + 1))
+            self._render_chapter(story, chapter, audit_result, audit_type, detailed, i + 1)
+
+        story.append(Spacer(1, 0.3 * inch))
+        story.append(
+            Paragraph(
+                "<i>AEO/GEO Score Auditor — Chapter Book Report</i>",
+                self.styles["Footer"],
+            )
+        )
+
         doc.build(story)
         buffer.seek(0)
-        
-        logger.info(f"Generated PDF report for {audit_type} audit")
+        logger.info(f"Generated chapter-book PDF for {audit_type} audit ({len(chapters)} chapters)")
         return buffer
 
+    def _render_chapter(
+        self,
+        story: List[Any],
+        chapter: Dict[str, Any],
+        audit_result: Dict[str, Any],
+        audit_type: str,
+        detailed: bool,
+        chapter_index: int,
+    ):
+        ctype = chapter["type"]
+        if ctype == "cover":
+            self._add_cover(story, audit_result, audit_type)
+        elif ctype == "summary":
+            self._add_summary(story, audit_result, audit_type)
+        elif ctype == "category":
+            self._add_category(story, chapter["category"], audit_result, detailed, chapter_index - 2)
+        elif ctype == "geo":
+            self._add_geo(story, audit_result)
+        elif ctype == "actions":
+            self._add_actions(story, audit_result, audit_type, detailed)
+
+    def _add_cover(self, story: List[Any], audit_result: Dict[str, Any], audit_type: str):
+        story.append(Spacer(1, 0.4 * inch))
+        story.append(Paragraph("AEO / GEO AUDIT REPORT", self.styles["CoverKicker"]))
+
+        if audit_type == "domain":
+            title = audit_result.get("domain", "N/A")
+            subtitle = (
+                f"{audit_result.get('pages_successful', 0)} of "
+                f"{audit_result.get('pages_audited', 0)} pages audited"
+            )
+        else:
+            title = audit_result.get("url", "N/A")
+            subtitle = "Single Page Audit"
+
+        story.append(Paragraph(title, self.styles["CoverTitle"]))
+        story.append(Paragraph(subtitle, ParagraphStyle(
+            name="CoverSub", parent=self.styles["Normal"], alignment=TA_CENTER,
+            textColor=STONE_600, fontSize=10, spaceAfter=20,
+        )))
+
+        score = audit_result.get("overall_score", 0)
+        grade = audit_result.get("grade", "F")
+        story.append(Paragraph(f"{score}", self.styles["CoverScore"]))
+        story.append(Paragraph(
+            f'<font color="#a8a29e">/ 100</font>',
+            ParagraphStyle(name="CoverMax", parent=self.styles["Normal"], alignment=TA_CENTER, fontSize=14),
+        ))
+        story.append(Spacer(1, 0.1 * inch))
+        story.append(Paragraph(
+            f'<font color="{grade_color_hex(grade)}">{grade}</font>',
+            self.styles["CoverGrade"],
+        ))
+        story.append(Paragraph(
+            f'{get_score_label(score)} &nbsp;·&nbsp; {datetime.now().strftime("%B %d, %Y")}',
+            ParagraphStyle(name="CoverMeta", parent=self.styles["Normal"], alignment=TA_CENTER,
+                           textColor=STONE_600, fontSize=10),
+        ))
+
+        classification = audit_result.get("content_classification")
+        if classification:
+            story.append(Spacer(1, 0.25 * inch))
+            ctype = classification.get("type", "").upper()
+            conf = classification.get("confidence", "")
+            desc = classification.get("description", "")
+            story.append(Paragraph(
+                f'<b>Content Type:</b> {ctype} ({conf} confidence)<br/>'
+                f'<font color="#57534e"><i>{desc}</i></font>',
+                ParagraphStyle(name="ContentType", parent=self.styles["Normal"], fontSize=9,
+                               backColor=HexColor("#f5f5f4"), borderPadding=8),
+            ))
+
+    def _add_summary(self, story: List[Any], audit_result: Dict[str, Any], audit_type: str):
+        story.append(Paragraph("CHAPTER OVERVIEW", self.styles["ChapterKicker"]))
+        story.append(Paragraph("Executive Summary", self.styles["ChapterTitle"]))
+
+        breakdown = audit_result.get("breakdown", {})
+        sorted_cats = sorted(
+            breakdown.items(),
+            key=lambda x: x[1].get("percentage", 0),
+            reverse=True,
+        )
+        score = audit_result.get("overall_score", 0)
+        insights = [f"Overall performance is {get_score_label(score).lower()} at {score}/100."]
+        if sorted_cats:
+            strongest = sorted_cats[0]
+            weakest = sorted_cats[-1]
+            insights.append(
+                f"Strongest area: {format_category_name(strongest[0])} "
+                f"({strongest[1].get('percentage', 0):.0f}%)."
+            )
+            if strongest[0] != weakest[0]:
+                insights.append(
+                    f"Priority focus: {format_category_name(weakest[0])} "
+                    f"({weakest[1].get('percentage', 0):.0f}%)."
+                )
+
+        if audit_type == "domain":
+            best = audit_result.get("best_page")
+            worst = audit_result.get("worst_page")
+            if best and worst:
+                insights.append(
+                    f"Best page scores {best.get('overall_score', 0)}/100; "
+                    f"weakest page scores {worst.get('overall_score', 0)}/100."
+                )
+
+        for insight in insights:
+            story.append(Paragraph(f"• {insight}", self.styles["InsightBullet"]))
+
+        story.append(Spacer(1, 0.2 * inch))
+        story.append(Paragraph("CATEGORY SNAPSHOT", self.styles["SectionLabel"]))
+        for category, data in sorted_cats:
+            pct = data.get("percentage", 0)
+            story.append(Paragraph(
+                f'<b>{format_category_name(category)}</b> — '
+                f'<font color="{score_color_hex(pct)}">{pct:.0f}%</font>',
+                self.styles["BodyText"],
+            ))
+            story.append(ProgressBar(pct))
+            story.append(Spacer(1, 0.08 * inch))
+
+        if audit_type == "domain":
+            best = audit_result.get("best_page")
+            worst = audit_result.get("worst_page")
+            if best and worst:
+                story.append(Spacer(1, 0.15 * inch))
+                page_data = [
+                    [
+                        Paragraph("<b>BEST PAGE</b>", ParagraphStyle(name="BestL", fontSize=8, textColor=EMERALD)),
+                        Paragraph("<b>NEEDS IMPROVEMENT</b>", ParagraphStyle(name="WorstL", fontSize=8, textColor=ROSE)),
+                    ],
+                    [
+                        Paragraph(f"<b>{best.get('overall_score', 0)}/100</b>", self.styles["BodyText"]),
+                        Paragraph(f"<b>{worst.get('overall_score', 0)}/100</b>", self.styles["BodyText"]),
+                    ],
+                    [
+                        Paragraph(best.get("url", ""), ParagraphStyle(name="BestU", fontSize=8, textColor=STONE_600)),
+                        Paragraph(worst.get("url", ""), ParagraphStyle(name="WorstU", fontSize=8, textColor=STONE_600)),
+                    ],
+                ]
+                t = Table(page_data, colWidths=[3.25 * inch, 3.25 * inch])
+                t.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (0, -1), HexColor("#ecfdf5")),
+                    ("BACKGROUND", (1, 0), (1, -1), HexColor("#fff1f2")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ]))
+                story.append(t)
+
+    def _add_category(
+        self,
+        story: List[Any],
+        category: str,
+        audit_result: Dict[str, Any],
+        detailed: bool,
+        cat_index: int,
+    ):
+        data = audit_result.get("breakdown", {}).get(category, {})
+        pct = data.get("percentage", 0)
+        score = data.get("score", 0)
+        max_score = data.get("max", 100)
+
+        story.append(Paragraph(f"CATEGORY {cat_index}", self.styles["ChapterKicker"]))
+        story.append(Paragraph(format_category_name(category), self.styles["ChapterTitle"]))
+        story.append(Paragraph(get_category_description(category), self.styles["ChapterSubtitle"]))
+        story.append(Paragraph(
+            f'<font color="{score_color_hex(pct)}"><b>{score}</b></font>'
+            f'<font color="#a8a29e">/{max_score}</font>'
+            f' &nbsp;&nbsp; <font color="{score_color_hex(pct)}"><b>{pct:.1f}%</b></font>',
+            ParagraphStyle(name="CatScore", parent=self.styles["BodyText"], fontSize=16, spaceAfter=6),
+        ))
+        story.append(ProgressBar(pct))
+        story.append(Spacer(1, 0.2 * inch))
+
+        sub_scores = data.get("sub_scores", {})
+        if sub_scores:
+            story.append(Paragraph("SUB-SCORES", self.styles["SectionLabel"]))
+            rows = [["Metric", "Score"]]
+            for sub, val in sub_scores.items():
+                rows.append([format_category_name(sub), str(val)])
+            t = Table(rows, colWidths=[4 * inch, 1.5 * inch])
+            t.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), HexColor("#f5f5f4")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(t)
+            story.append(Spacer(1, 0.15 * inch))
+
+        best = data.get("best_page")
+        worst = data.get("worst_page")
+        if best and worst:
+            story.append(Paragraph(
+                f'<font color="#10b981"><b>Best:</b></font> {best.get("score", 0):.1f} — {self._truncate_url(best.get("url", ""))}<br/>'
+                f'<font color="#f43f5e"><b>Worst:</b></font> {worst.get("score", 0):.1f} — {self._truncate_url(worst.get("url", ""))}',
+                ParagraphStyle(name="BestWorst", parent=self.styles["BodyText"], fontSize=9),
+            ))
+            story.append(Spacer(1, 0.15 * inch))
+
+        page_scores = data.get("page_scores", [])
+        if page_scores and detailed:
+            story.append(Paragraph("PER-PAGE BREAKDOWN", self.styles["SectionLabel"]))
+            rows = [["Page URL", "Score", "%"]]
+            for page in sorted(page_scores, key=lambda p: p.get("score", 0), reverse=True):
+                rows.append([
+                    self._truncate_url(page.get("url", ""), 70),
+                    f"{page.get('score', 0):.1f}/{max_score}",
+                    f"{page.get('percentage', 0):.0f}%",
+                ])
+            t = Table(rows, colWidths=[3.8 * inch, 1.2 * inch, 0.8 * inch])
+            t.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), HexColor("#eef2ff")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), INDIGO),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]))
+            story.append(t)
+
+    def _add_geo(self, story: List[Any], audit_result: Dict[str, Any]):
+        geo = audit_result.get("geo_score", {})
+        story.append(Paragraph("GENERATIVE ENGINE OPTIMIZATION", self.styles["ChapterKicker"]))
+        story.append(Paragraph("GEO Score", self.styles["ChapterTitle"]))
+        story.append(Paragraph(
+            f"Brand inclusion readiness — {geo.get('brand_name', 'N/A')} "
+            f"across {geo.get('pages_analyzed', 0)} pages",
+            self.styles["ChapterSubtitle"],
+        ))
+
+        geo_score = geo.get("geo_score", 0)
+        story.append(Paragraph(
+            f'<font color="#7c3aed"><b>{geo_score}</b></font><font color="#a8a29e">/100</font>',
+            ParagraphStyle(name="GeoScore", parent=self.styles["BodyText"], fontSize=28, spaceAfter=8),
+        ))
+        story.append(Paragraph(f'<i>{geo.get("summary", "")}</i>', self.styles["BodyText"]))
+        story.append(Spacer(1, 0.2 * inch))
+
+        story.append(Paragraph("COMPONENTS", self.styles["SectionLabel"]))
+        rows = [["Component", "Score", "%"]]
+        for name, comp in geo.get("components", {}).items():
+            s, m = comp.get("score", 0), comp.get("max", 1)
+            pct = (s / m * 100) if m else 0
+            rows.append([format_category_name(name), f"{s:.1f}/{m}", f"{pct:.0f}%"])
+        t = Table(rows, colWidths=[3 * inch, 1.5 * inch, 1 * inch])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), VIOLET),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.15 * inch))
+        story.append(Paragraph(
+            "<i>GEO Score estimates brand inclusion readiness for AI systems. "
+            "It does not predict rankings or guarantee citations.</i>",
+            ParagraphStyle(name="GeoNote", parent=self.styles["BodyText"], fontSize=8, textColor=VIOLET),
+        ))
+
+    def _add_actions(
+        self,
+        story: List[Any],
+        audit_result: Dict[str, Any],
+        audit_type: str,
+        detailed: bool,
+    ):
+        story.append(Paragraph("NEXT STEPS", self.styles["ChapterKicker"]))
+        story.append(Paragraph("Recommended Actions", self.styles["ChapterTitle"]))
+
+        breakdown = audit_result.get("breakdown", {})
+        weak = sorted(
+            [(k, v) for k, v in breakdown.items() if v.get("percentage", 0) < 70],
+            key=lambda x: x[1].get("percentage", 0),
+        )
+        geo = audit_result.get("geo_score") or {}
+        geo_actions = geo.get("recommended_actions", [])
+
+        if not weak and not geo_actions:
+            story.append(Paragraph(
+                "<b>Strong performance across the board.</b><br/>"
+                "Maintain content freshness and monitor scores as you publish new pages.",
+                ParagraphStyle(name="AllGood", parent=self.styles["BodyText"], backColor=HexColor("#ecfdf5"),
+                               borderPadding=10),
+            ))
+
+        if geo_actions:
+            story.append(Paragraph("GEO PRIORITIES", self.styles["SectionLabel"]))
+            for i, action in enumerate(geo_actions, 1):
+                story.append(Paragraph(f"<b>{i}.</b> {action}", self.styles["BodyText"]))
+                story.append(Spacer(1, 0.06 * inch))
+
+        if weak:
+            story.append(Spacer(1, 0.1 * inch))
+            story.append(Paragraph("AEO IMPROVEMENT AREAS", self.styles["SectionLabel"]))
+            for category, data in weak:
+                pct = data.get("percentage", 0)
+                action = CATEGORY_ACTIONS.get(
+                    category,
+                    f"Review and improve {format_category_name(category).lower()} signals across audited pages.",
+                )
+                story.append(Paragraph(
+                    f'<b>{format_category_name(category)}</b> '
+                    f'<font color="#f43f5e">({pct:.0f}%)</font><br/>'
+                    f'<font color="#57534e"><i>{get_category_description(category)}</i></font><br/>'
+                    f'{action}',
+                    ParagraphStyle(name="ActionCard", parent=self.styles["BodyText"], fontSize=9,
+                                   backColor=HexColor("#fafaf9"), borderPadding=8, spaceAfter=10),
+                ))
+
+        if detailed and audit_type == "domain":
+            page_results = audit_result.get("page_results", [])
+            if page_results:
+                story.append(PageBreak())
+                story.append(Paragraph("DETAILED ACTION PLAN", self.styles["ChapterKicker"]))
+                story.append(Paragraph("Issues Grouped by Type", self.styles["ChapterTitle"]))
+                story.append(Paragraph(
+                    f"<i>Issues affecting multiple pages across all {len(page_results)} audited pages.</i>",
+                    self.styles["ChapterSubtitle"],
+                ))
+                issue_groups = self._group_pages_by_issues(page_results)
+                for issue_type, issue_data in sorted(
+                    issue_groups.items(), key=lambda x: len(x[1]["pages"]), reverse=True
+                ):
+                    if not issue_data["pages"]:
+                        continue
+                    count = len(issue_data["pages"])
+                    story.append(Paragraph(
+                        f'<b>{issue_data["icon"]} {issue_type}</b> — '
+                        f'<font color="#dc2626">{count} page(s) affected</font>',
+                        ParagraphStyle(name="IssueH", parent=self.styles["BodyText"], fontSize=11, spaceAfter=4),
+                    ))
+                    story.append(Paragraph(f'<b>Why:</b> {issue_data["description"]}', self.styles["BodyText"]))
+                    story.append(Paragraph(f'<b>Fix:</b> <font color="#059669">{issue_data["fix"]}</font>',
+                                           ParagraphStyle(name="Fix", parent=self.styles["BodyText"], fontSize=9)))
+                    for url in issue_data["pages"][:8]:
+                        story.append(Paragraph(
+                            f"• {self._truncate_url(url, 75)}",
+                            ParagraphStyle(name="AffPage", parent=self.styles["BodyText"], fontSize=8,
+                                           leftIndent=10, textColor=STONE_600),
+                        ))
+                    if count > 8:
+                        story.append(Paragraph(f"<i>...and {count - 8} more</i>",
+                                               ParagraphStyle(name="More", fontSize=8, textColor=STONE_400)))
+                    story.append(Spacer(1, 0.12 * inch))
 
     def _group_pages_by_issues(self, page_results: list) -> dict:
-        """Group pages by the issues they need fixing"""
+        """Group pages by the issues they need fixing."""
         issues = {
-            'Missing Organization Schema': {
-                'pages': [],
-                'icon': '🏢',
-                'description': 'Organization schema helps AI systems understand your brand identity and structure.',
-                'impact': 'Improves brand recognition in AI responses',
-                'fix': 'Add Organization schema markup to these pages with name, logo, and contact information.'
+            "Missing Organization Schema": {
+                "pages": [],
+                "icon": "🏢",
+                "description": "Organization schema helps AI systems understand your brand identity and structure.",
+                "impact": "Improves brand recognition in AI responses",
+                "fix": "Add Organization schema markup to these pages with name, logo, and contact information.",
             },
-            'No Author Information': {
-                'pages': [],
-                'icon': '✍️',
-                'description': 'Author attribution builds trust and credibility for content.',
-                'impact': 'Increases content trustworthiness for AI systems',
-                'fix': 'Add author bylines and consider adding Person schema for key authors.'
+            "No Author Information": {
+                "pages": [],
+                "icon": "✍️",
+                "description": "Author attribution builds trust and credibility for content.",
+                "impact": "Increases content trustworthiness for AI systems",
+                "fix": "Add author bylines and consider adding Person schema for key authors.",
             },
-            'Missing Publication Dates': {
-                'pages': [],
-                'icon': '📅',
-                'description': 'Dates help AI systems assess content freshness and relevance.',
-                'impact': 'Better temporal context for AI inclusion',
-                'fix': 'Add publication and last-modified dates to all content pages.'
+            "Missing Publication Dates": {
+                "pages": [],
+                "icon": "📅",
+                "description": "Dates help AI systems assess content freshness and relevance.",
+                "impact": "Better temporal context for AI inclusion",
+                "fix": "Add publication and last-modified dates to all content pages.",
             },
-            'Low Answerability Score': {
-                'pages': [],
-                'icon': '❓',
-                'description': 'Content doesn\'t effectively answer questions or provide clear information.',
-                'impact': 'Reduces likelihood of being cited for Q&A prompts',
-                'fix': 'Add Q&A sections, use question-format headings (H2), and provide direct answers.'
+            "Low Answerability Score": {
+                "pages": [],
+                "icon": "❓",
+                "description": "Content doesn't effectively answer questions or provide clear information.",
+                "impact": "Reduces likelihood of being cited for Q&A prompts",
+                "fix": "Add Q&A sections, use question-format headings (H2), and provide direct answers.",
             },
-            'Weak Structured Data': {
-                'pages': [],
-                'icon': '📊',
-                'description': 'Missing or incomplete schema.org markup limits machine readability.',
-                'impact': 'Harder for AI to extract structured information',
-                'fix': 'Implement appropriate schema types (Article, Event, Place, Product, etc.) with rich properties.'
+            "Weak Structured Data": {
+                "pages": [],
+                "icon": "📊",
+                "description": "Missing or incomplete schema.org markup limits machine readability.",
+                "impact": "Harder for AI to extract structured information",
+                "fix": "Implement appropriate schema types (Article, Event, Place, Product, etc.) with rich properties.",
             },
-            'Thin Content': {
-                'pages': [],
-                'icon': '📝',
-                'description': 'Content lacks depth or comprehensive coverage.',
-                'impact': 'Lower authority and usefulness signals',
-                'fix': 'Expand content to 500+ words with detailed information, examples, and context.'
+            "Thin Content": {
+                "pages": [],
+                "icon": "📝",
+                "description": "Content lacks depth or comprehensive coverage.",
+                "impact": "Lower authority and usefulness signals",
+                "fix": "Expand content to 500+ words with detailed information, examples, and context.",
             },
-            'Low Authority Signals': {
-                'pages': [],
-                'icon': '⭐',
-                'description': 'Lacking trust signals like citations, sources, or expert attribution.',
-                'impact': 'Reduces AI confidence in citing your content',
-                'fix': 'Add external references, data sources, expert quotes, and clear attribution.'
+            "Low Authority Signals": {
+                "pages": [],
+                "icon": "⭐",
+                "description": "Lacking trust signals like citations, sources, or expert attribution.",
+                "impact": "Reduces AI confidence in citing your content",
+                "fix": "Add external references, data sources, expert quotes, and clear attribution.",
             },
-            'Poor Technical Performance': {
-                'pages': [],
-                'icon': '⚡',
-                'description': 'Slow load times or technical issues impact user and AI crawler experience.',
-                'impact': 'May limit crawlability and indexing',
-                'fix': 'Optimize images, enable caching, use CDN, and reduce server response time.'
-            }
+            "Poor Technical Performance": {
+                "pages": [],
+                "icon": "⚡",
+                "description": "Slow load times or technical issues impact user and AI crawler experience.",
+                "impact": "May limit crawlability and indexing",
+                "fix": "Optimize images, enable caching, use CDN, and reduce server response time.",
+            },
         }
-        
+
         for page in page_results:
-            url = page.get('url', '')
-            breakdown = page.get('breakdown', {})
-            extracted_data = page.get('extracted_data', {})
-            
-            # Check for organization schema
-            structured_data = breakdown.get('structured_data', {})
-            if structured_data.get('score', 0) < structured_data.get('max', 15) * 0.3:
-                issues['Weak Structured Data']['pages'].append(url)
-            
-            # Check for author
-            if not extracted_data.get('has_author', False):
-                issues['No Author Information']['pages'].append(url)
-            
-            # Check for dates
-            if not extracted_data.get('has_dates', False):
-                issues['Missing Publication Dates']['pages'].append(url)
-            
-            # Check answerability
-            answerability = breakdown.get('answerability', {})
-            if answerability.get('score', 0) < answerability.get('max', 30) * 0.5:
-                issues['Low Answerability Score']['pages'].append(url)
-            
-            # Check content quality (word count)
-            word_count = extracted_data.get('word_count', 0)
-            if word_count < 300:
-                issues['Thin Content']['pages'].append(url)
-            
-            # Check authority
-            authority = breakdown.get('authority', {})
-            if authority.get('score', 0) < authority.get('max', 18) * 0.3:
-                issues['Low Authority Signals']['pages'].append(url)
-            
-            # Check technical
-            technical = breakdown.get('technical', {})
-            if technical.get('score', 0) < technical.get('max', 10) * 0.6:
-                issues['Poor Technical Performance']['pages'].append(url)
-        
-        # Remove issues with no affected pages
-        return {k: v for k, v in issues.items() if v['pages']}
-    
+            url = page.get("url", "")
+            bd = page.get("breakdown", {})
+            extracted = page.get("extracted_data", {})
+
+            structured = bd.get("structured_data", {})
+            if structured.get("score", 0) < structured.get("max", 15) * 0.3:
+                issues["Weak Structured Data"]["pages"].append(url)
+            if not extracted.get("has_author", False):
+                issues["No Author Information"]["pages"].append(url)
+            if not extracted.get("has_dates", False):
+                issues["Missing Publication Dates"]["pages"].append(url)
+            answerability = bd.get("answerability", {})
+            if answerability.get("score", 0) < answerability.get("max", 30) * 0.5:
+                issues["Low Answerability Score"]["pages"].append(url)
+            if extracted.get("word_count", 0) < 300:
+                issues["Thin Content"]["pages"].append(url)
+            authority = bd.get("authority", {})
+            if authority.get("score", 0) < authority.get("max", 18) * 0.3:
+                issues["Low Authority Signals"]["pages"].append(url)
+            technical = bd.get("technical", {})
+            if technical.get("score", 0) < technical.get("max", 10) * 0.6:
+                issues["Poor Technical Performance"]["pages"].append(url)
+
+        return {k: v for k, v in issues.items() if v["pages"]}
+
     def _truncate_url(self, url: str, max_len: int = 60) -> str:
-        """Truncate URL for display"""
         if len(url) <= max_len:
             return url
-        return url[:max_len-3] + '...'
+        return url[: max_len - 3] + "..."
 
 
-def generate_pdf_report(audit_result: Dict[str, Any], audit_type: str = 'page', detailed: bool = False) -> BytesIO:
-    """Convenience function to generate PDF report"""
+def generate_pdf_report(
+    audit_result: Dict[str, Any], audit_type: str = "page", detailed: bool = False
+) -> BytesIO:
+    """Convenience function to generate chapter-book PDF report."""
     generator = PDFReportGenerator()
     return generator.generate_report(audit_result, audit_type, detailed)
-

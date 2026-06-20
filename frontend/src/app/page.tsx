@@ -2,70 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
-
-interface ScoreBreakdown {
-  score: number;
-  max: number;
-  percentage?: number;
-  sub_scores?: Record<string, number>;
-  page_scores?: Array<{
-    url: string;
-    score: number;
-    percentage: number;
-    sub_scores?: Record<string, number>;
-  }>;
-  best_page?: {
-    url: string;
-    score: number;
-  };
-  worst_page?: {
-    url: string;
-    score: number;
-  };
-}
-
-interface GEOScore {
-  geo_score: number;
-  components: {
-    brand_foundation: { score: number; max: number; evidence: string[] };
-    topic_coverage: { score: number; max: number; evidence: string[] };
-    consistency: { score: number; max: number; evidence: string[] };
-    ai_recall: { score: number; max: number; evidence: string[] };
-    trust: { score: number; max: number; evidence: string[] };
-  };
-  summary: string;
-  recommended_actions: string[];
-  brand_name: string;
-  pages_analyzed: number;
-}
-
-interface ContentClassification {
-  type: string;
-  confidence: string;
-  profile_used: string;
-  description: string;
-}
-
-interface AuditResult {
-  overall_score: number;
-  grade: string;
-  breakdown: Record<string, ScoreBreakdown>;
-  content_classification?: ContentClassification;
-}
-
-interface DomainAuditResult {
-  domain: string;
-  overall_score: number;
-  grade: string;
-  pages_audited: number;
-  pages_successful: number;
-  breakdown: Record<string, ScoreBreakdown>;
-  page_results?: Array<any>;
-  best_page?: any;
-  worst_page?: any;
-  content_classification?: ContentClassification;
-  geo_score?: GEOScore;
-}
+import { ReportBook } from '@/components/report/ReportBook';
+import { AuditResult, DomainAuditResult } from '@/types/audit';
 
 interface ProgressUpdate {
   status: string;
@@ -87,31 +25,11 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [domainResult, setDomainResult] = useState<DomainAuditResult | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [detailViewCategory, setDetailViewCategory] = useState<string | null>(null);
   const [detailedPDF, setDetailedPDF] = useState<boolean>(false);
   
   // Progress tracking
   const [progress, setProgress] = useState<ProgressUpdate | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
-
-  const toggleCategory = (category: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(category)) {
-      newExpanded.delete(category);
-    } else {
-      newExpanded.add(category);
-    }
-    setExpandedCategories(newExpanded);
-  };
-
-  const openDetailView = (category: string) => {
-    setDetailViewCategory(category);
-  };
-
-  const closeDetailView = () => {
-    setDetailViewCategory(null);
-  };
 
   // SSE for progress tracking
   useEffect(() => {
@@ -274,31 +192,6 @@ export default function Home() {
     }
   };
 
-  const getCategoryColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-600';
-    if (percentage >= 60) return 'text-yellow-600';
-    if (percentage >= 40) return 'text-orange-600';
-    return 'text-red-600';
-  };
-
-  const getBarColor = (percentage: number) => {
-    if (percentage >= 80) return 'bg-green-500';
-    if (percentage >= 60) return 'bg-yellow-500';
-    if (percentage >= 40) return 'bg-orange-500';
-    return 'bg-red-500';
-  };
-
-  const getGradeColor = (grade: string) => {
-    if (grade.startsWith('A')) return 'text-green-600';
-    if (grade.startsWith('B')) return 'text-yellow-600';
-    if (grade.startsWith('C')) return 'text-orange-600';
-    return 'text-red-600';
-  };
-
-  const formatCategoryName = (category: string) => {
-    return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
   const extractDomainName = (url: string): string => {
     try {
       const urlObj = new URL(url);
@@ -367,19 +260,6 @@ export default function Home() {
       setError(`Failed to download PDF: ${err.message}`);
       console.error('PDF download error:', err);
     }
-  };
-
-  const getCategoryDescription = (category: string) => {
-    const descriptions: Record<string, string> = {
-      answerability: "How well the content directly answers questions",
-      structured_data: "Implementation of Schema.org and structured markup",
-      authority: "Author credentials, citations, and trust signals",
-      content_quality: "Depth, uniqueness, and freshness of content",
-      citationability: "Clarity of facts, data tables, and trustworthiness",
-      technical: "Page performance, mobile-friendliness, and SEO basics",
-      ai_citation: "Likelihood of being cited by AI models"
-    };
-    return descriptions[category] || "";
   };
 
   return (
@@ -567,360 +447,28 @@ export default function Home() {
 
         {/* Single Page Results */}
         {auditResult && (
-          <div className="mt-8 p-6 bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-xl">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-3xl font-bold text-gray-800">📊 Audit Results</h2>
-              <div className="flex flex-col items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={detailedPDF}
-                    onChange={(e) => setDetailedPDF(e.target.checked)}
-                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                  />
-                  <span>Detailed PDF (includes all subsections)</span>
-                </label>
-                <button
-                  onClick={() => downloadPDF(auditResult, 'page')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
-                >
-                  <span>📥</span>
-                  <span>Download PDF</span>
-                </button>
-              </div>
-            </div>
-            {/* Content Type Badge */}
-            {auditResult.content_classification && (
-              <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-indigo-900">Content Type:</span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                    auditResult.content_classification.type === 'experiential' ? 'bg-purple-200 text-purple-800' :
-                    auditResult.content_classification.type === 'informational' ? 'bg-blue-200 text-blue-800' :
-                    auditResult.content_classification.type === 'transactional' ? 'bg-green-200 text-green-800' :
-                    'bg-gray-200 text-gray-800'
-                  }`}>
-                    {auditResult.content_classification.type}
-                  </span>
-                  <span className="text-xs text-gray-600">
-                    ({auditResult.content_classification.confidence} confidence)
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 italic">{auditResult.content_classification.description}</p>
-              </div>
-            )}
-
-            <div className="flex items-baseline gap-4 mb-6">
-              <span className="text-5xl font-extrabold text-gray-900">{auditResult.overall_score}</span>
-              <span className="text-2xl text-gray-600">/100</span>
-            </div>
-
-            <h3 className="text-2xl font-semibold mb-4 text-gray-700">Score Breakdown:</h3>
-            <div className="space-y-3">
-              {Object.entries(auditResult.breakdown).map(([category, data]) => (
-                <div key={category} className="bg-white p-4 rounded-lg shadow">
-                  <button
-                    onClick={() => toggleCategory(category)}
-                    className="w-full text-left flex items-center justify-between hover:bg-gray-50 transition-colors rounded p-2"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-lg">
-                          {expandedCategories.has(category) ? '▼' : '▶'} {formatCategoryName(category)}
-                        </span>
-                        <span className={`font-bold text-lg ${getCategoryColor(data.percentage || 0)}`}>
-                          {data.score}/{data.max} ({data.percentage?.toFixed(1)}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className={`h-3 rounded-full transition-all ${getBarColor(data.percentage || 0)}`}
-                          style={{ width: `${data.percentage || 0}%` }}
-                        />
-                      </div>
-                    </div>
-                  </button>
-                  
-                  {/* Expandable Sub-scores */}
-                  {expandedCategories.has(category) && data.sub_scores && (
-                    <div className="mt-4 pl-6 border-l-2 border-gray-300 space-y-2">
-                      <p className="text-sm text-gray-600 italic mb-3">{getCategoryDescription(category)}</p>
-                      {Object.entries(data.sub_scores).map(([subCategory, score]) => (
-                        <div key={subCategory} className="flex justify-between text-sm">
-                          <span className="text-gray-600">
-                            {formatCategoryName(subCategory)}
-                          </span>
-                          <span className="font-medium text-gray-800">{score}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <ReportBook
+            result={auditResult}
+            auditType="page"
+            sourceUrl={url}
+            detailedPDF={detailedPDF}
+            onDetailedPDFChange={setDetailedPDF}
+            onDownloadPDF={() => downloadPDF(auditResult, 'page')}
+          />
         )}
 
         {/* Domain Results */}
         {domainResult && (
-          <div className="mt-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-3xl font-bold text-gray-800">🌐 Domain Audit Results</h2>
-              <div className="flex flex-col items-end gap-2">
-                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={detailedPDF}
-                    onChange={(e) => setDetailedPDF(e.target.checked)}
-                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                  />
-                  <span>Detailed PDF (includes all pages)</span>
-                </label>
-                <button
-                  onClick={() => downloadPDF(domainResult, 'domain')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-lg"
-                >
-                  <span>📥</span>
-                  <span>Download PDF</span>
-                </button>
-              </div>
-            </div>
-            
-            <div className="mb-6 p-4 bg-white rounded-lg shadow">
-              <p className="text-sm text-gray-600 mb-2">Domain: <span className="font-semibold">{domainResult.domain}</span></p>
-              <p className="text-sm text-gray-600">
-                Audited: <span className="font-semibold">{domainResult.pages_successful}/{domainResult.pages_audited}</span> pages successfully
-              </p>
-            </div>
-
-            <div className="flex items-baseline gap-4 mb-6">
-              <span className="text-5xl font-extrabold text-gray-900">{domainResult.overall_score}</span>
-              <span className="text-2xl text-gray-600">/100</span>
-            </div>
-
-            <h3 className="text-2xl font-semibold mb-4 text-gray-700">Average Score Breakdown:</h3>
-            <div className="space-y-3">
-              {Object.entries(domainResult.breakdown).map(([category, data]) => (
-                <div key={category} className="bg-white p-4 rounded-lg shadow">
-                  <div className="flex items-center justify-between mb-2">
-                    <button
-                      onClick={() => toggleCategory(`domain_${category}`)}
-                      className="flex-1 text-left hover:bg-gray-50 transition-colors rounded p-2"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-lg">
-                          {expandedCategories.has(`domain_${category}`) ? '▼' : '▶'} {formatCategoryName(category)}
-                        </span>
-                        <span className={`font-bold text-lg ${getCategoryColor(data.percentage || 0)}`}>
-                          {data.score}/{data.max} ({data.percentage?.toFixed(1)}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className={`h-3 rounded-full transition-all ${getBarColor(data.percentage || 0)}`}
-                          style={{ width: `${data.percentage || 0}%` }}
-                        />
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => openDetailView(category)}
-                      className="ml-4 px-4 py-2 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-                    >
-                      Details
-                    </button>
-                  </div>
-                  
-                  {/* Quick summary when collapsed */}
-                  {!expandedCategories.has(`domain_${category}`) && data.page_scores && (
-                    <div className="text-xs text-gray-600 mt-2">
-                      Best: {data.best_page?.score.toFixed(1)} | Worst: {data.worst_page?.score.toFixed(1)} | {data.page_scores.length} pages analyzed
-                    </div>
-                  )}
-                  
-                  {/* Expandable summary */}
-                  {expandedCategories.has(`domain_${category}`) && (
-                    <div className="mt-4 pl-6 border-l-2 border-gray-300">
-                      <p className="text-sm text-gray-600 italic mb-3">{getCategoryDescription(category)}</p>
-                      {data.best_page && data.worst_page && (
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div className="bg-green-50 p-2 rounded">
-                            <p className="text-xs font-semibold text-green-800">🏆 Best Score</p>
-                            <p className="text-sm font-bold text-green-700">{data.best_page.score.toFixed(1)}/{data.max}</p>
-                            <p className="text-xs text-gray-600 truncate">{data.best_page.url}</p>
-                          </div>
-                          <div className="bg-red-50 p-2 rounded">
-                            <p className="text-xs font-semibold text-red-800">📉 Needs Work</p>
-                            <p className="text-sm font-bold text-red-700">{data.worst_page.score.toFixed(1)}/{data.max}</p>
-                            <p className="text-xs text-gray-600 truncate">{data.worst_page.url}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Best and Worst Pages */}
-            {domainResult.best_page && domainResult.worst_page && (
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <h4 className="font-semibold text-green-800 mb-2">🏆 Best Overall Page</h4>
-                  <p className="text-xs text-gray-600 mb-1 truncate">{domainResult.best_page.url}</p>
-                  <p className="text-2xl font-bold text-green-700">{domainResult.best_page.overall_score}/100</p>
-                </div>
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                  <h4 className="font-semibold text-red-800 mb-2">📉 Needs Most Improvement</h4>
-                  <p className="text-xs text-gray-600 mb-1 truncate">{domainResult.worst_page.url}</p>
-                  <p className="text-2xl font-bold text-red-700">{domainResult.worst_page.overall_score}/100</p>
-                </div>
-              </div>
-            )}
-
-            {/* GEO Score Section */}
-            {domainResult.geo_score && (
-              <div className="mt-8 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-300 rounded-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-3xl">🤖</span>
-                  <div>
-                    <h3 className="text-2xl font-bold text-indigo-900">GEO Score</h3>
-                    <p className="text-sm text-indigo-600">Generative Engine Optimization</p>
-                  </div>
-                </div>
-
-                {/* GEO Score Display */}
-                <div className="bg-white rounded-lg p-4 mb-4 shadow-md">
-                  <div className="flex items-baseline gap-3 mb-2">
-                    <span className="text-5xl font-extrabold text-indigo-900">{domainResult.geo_score.geo_score}</span>
-                    <span className="text-2xl text-gray-600">/100</span>
-                    <span className="ml-4 text-sm text-gray-500">Inclusion Readiness</span>
-                  </div>
-                  <p className="text-sm text-gray-700 italic">{domainResult.geo_score.summary}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Brand: <span className="font-semibold">{domainResult.geo_score.brand_name}</span> • 
-                    {domainResult.geo_score.pages_analyzed} pages analyzed
-                  </p>
-                </div>
-
-                {/* Component Breakdown */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                  {Object.entries(domainResult.geo_score.components).map(([key, comp]) => {
-                    const percentage = (comp.score / comp.max) * 100;
-                    const getColor = (pct: number) => {
-                      if (pct >= 70) return 'bg-green-500';
-                      if (pct >= 50) return 'bg-yellow-500';
-                      return 'bg-red-500';
-                    };
-                    const displayName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
-                    return (
-                      <div key={key} className="bg-white rounded-lg p-3 shadow">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-semibold text-gray-700">{displayName}</span>
-                          <span className="text-sm font-bold text-gray-900">{comp.score}/{comp.max}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${getColor(percentage)}`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Recommendations */}
-                {domainResult.geo_score.recommended_actions.length > 0 && (
-                  <div className="bg-white rounded-lg p-4 shadow">
-                    <h4 className="font-semibold text-gray-800 mb-3">💡 Recommended Actions</h4>
-                    <ul className="space-y-2">
-                      {domainResult.geo_score.recommended_actions.map((action, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <span className="text-indigo-600 mt-0.5">▸</span>
-                          <span className="text-gray-700">{action}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="mt-4 p-3 bg-indigo-100 rounded-lg">
-                  <p className="text-xs text-indigo-800">
-                    ℹ️ <strong>Note:</strong> GEO Score estimates brand inclusion readiness for AI systems.
-                    It does not predict rankings or guarantee citations.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+          <ReportBook
+            result={domainResult}
+            auditType="domain"
+            sourceUrl={domain}
+            detailedPDF={detailedPDF}
+            onDetailedPDFChange={setDetailedPDF}
+            onDownloadPDF={() => downloadPDF(domainResult, 'domain')}
+          />
         )}
       </div>
-
-      {/* Detail View Modal */}
-      {detailViewCategory && domainResult && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {formatCategoryName(detailViewCategory)} - Detailed Analysis
-              </h2>
-              <button
-                onClick={closeDetailView}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-6">
-              {domainResult.breakdown[detailViewCategory]?.page_scores && (
-                <>
-                  <p className="text-gray-600 mb-6">{getCategoryDescription(detailViewCategory)}</p>
-                  
-                  <div className="space-y-3">
-                    {domainResult.breakdown[detailViewCategory].page_scores!
-                      .sort((a, b) => b.score - a.score)
-                      .map((page, index) => (
-                        <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                          <div className="flex justify-between items-start mb-2">
-                            <a 
-                              href={page.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:underline flex-1 mr-4"
-                            >
-                              {page.url}
-                            </a>
-                            <span className={`font-bold ${getCategoryColor(page.percentage)}`}>
-                              {page.score.toFixed(1)}/{domainResult.breakdown[detailViewCategory].max}
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${getBarColor(page.percentage)}`}
-                              style={{ width: `${page.percentage}%` }}
-                            />
-                          </div>
-                          {page.sub_scores && Object.keys(page.sub_scores).length > 0 && (
-                            <div className="mt-3 pl-4 border-l-2 border-gray-300 space-y-1">
-                              {Object.entries(page.sub_scores).map(([sub, score]) => (
-                                <div key={sub} className="flex justify-between text-xs">
-                                  <span className="text-gray-600">{formatCategoryName(sub)}</span>
-                                  <span className="font-medium">{score}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
