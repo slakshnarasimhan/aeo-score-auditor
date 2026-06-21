@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { ScoreRing } from '../ScoreRing';
 import {
+  AuditProfile,
   AuditReportResult,
   ContentClassification,
   isDomainResult,
@@ -33,6 +34,21 @@ function ContentTypeBadge({ classification }: { classification: ContentClassific
         <span className="text-xs text-stone-500">({classification.confidence} confidence)</span>
       </div>
       <p className="text-sm text-stone-600 leading-relaxed">{classification.description}</p>
+    </div>
+  );
+}
+
+function AuditProfileBadge({ profile }: { profile: AuditProfile }) {
+  return (
+    <div className="mt-4 p-4 rounded-lg border border-indigo-200/80 bg-indigo-50/70 text-left w-full max-w-xl">
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <span className="text-xs font-semibold uppercase tracking-wider text-indigo-700">Audit Profile</span>
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border bg-white text-indigo-800 border-indigo-200">
+          {profile.label}
+        </span>
+        <span className="text-xs text-stone-500">({profile.confidence} confidence)</span>
+      </div>
+      <p className="text-sm text-stone-700 leading-relaxed">{profile.description}</p>
     </div>
   );
 }
@@ -69,6 +85,8 @@ export function CoverChapter({ result, auditType, sourceUrl }: CoverChapterProps
       {result.content_classification && (
         <ContentTypeBadge classification={result.content_classification} />
       )}
+
+      {result.audit_profile && <AuditProfileBadge profile={result.audit_profile} />}
     </div>
   );
 }

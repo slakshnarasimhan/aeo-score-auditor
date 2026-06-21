@@ -6,6 +6,9 @@ from loguru import logger
 
 from crawler.orchestrator import ExtractionOrchestrator
 from scoring.calculator import AEOScoreCalculator
+from reporting.recommendation_generator import RecommendationGenerator
+from reporting.prompt_gap_analyzer import PromptGapAnalyzer
+from reporting.positioning_analyzer import PositioningAnalyzer
 
 
 class AuditPipeline:
@@ -14,6 +17,9 @@ class AuditPipeline:
     def __init__(self):
         self.orchestrator = ExtractionOrchestrator()
         self.calculator = AEOScoreCalculator()
+        self.recommendation_generator = RecommendationGenerator()
+        self.prompt_gap_analyzer = PromptGapAnalyzer()
+        self.positioning_analyzer = PositioningAnalyzer()
     
     async def audit_page(self, url: str, options: Dict = None) -> Dict:
         """
@@ -37,11 +43,11 @@ class AuditPipeline:
             
             # Step 2: Calculate scores
             logger.info("Step 2/3: Calculating scores...")
-            scores = self.calculator.calculate_score(extracted_data)
+            scores = self.calculator.calculate_score(extracted_data, options)
             
             # Step 3: Generate recommendations (simplified for now)
             logger.info("Step 3/3: Generating recommendations...")
-            recommendations = self._generate_simple_recommendations(extracted_data, scores)
+            recommendations = self.recommendation_generator.generate_extraction_recommendations(scores)
             
             # Combine results
             result = {
@@ -50,6 +56,9 @@ class AuditPipeline:
                 'grade': scores['grade'],
                 'breakdown': scores['breakdown'],
                 'recommendations': recommendations,
+                'audit_profile': scores.get('audit_profile'),
+                'extraction_goals': scores.get('extraction_goals', []),
+                'not_applicable': scores.get('not_applicable', []),
                 'extracted_data': {
                     'word_count': extracted_data.word_count,
                     'heading_count': len(extracted_data.headings),
@@ -57,12 +66,27 @@ class AuditPipeline:
                     'jsonld_count': len(extracted_data.jsonld),
                     'has_author': extracted_data.author.get('found', False),
                     'has_dates': bool(extracted_data.dates.get('published'))
-                }
+                },
+                'prompt_evidence': self._build_prompt_evidence(extracted_data),
             }
             
             # Include content classification if available
             if 'content_classification' in scores:
                 result['content_classification'] = scores['content_classification']
+
+            result['positioning_analysis'] = self.positioning_analyzer.analyze(
+                [result],
+                url,
+                scores.get('audit_profile'),
+            )
+            result['prompt_analysis'] = self.prompt_gap_analyzer.analyze(
+                [result],
+                url,
+                scores.get('audit_profile'),
+                max_prompts=16,
+                use_llm=bool(options.get('llm_prompt_eval')),
+                positioning=result['positioning_analysis'],
+            )
             
             logger.info(f"Audit complete for: {url} - Score: {scores['overall_score']}")
             return result
@@ -70,6 +94,28 @@ class AuditPipeline:
         except Exception as e:
             logger.error(f"Audit failed for {url}: {e}")
             raise
+
+    def _build_prompt_evidence(self, extracted_data) -> Dict:
+        """Keep a compact local evidence corpus for prompt gap analysis."""
+        return {
+            'url': extracted_data.url,
+            'title': extracted_data.title,
+            'meta_description': extracted_data.meta_description,
+            'headings': [
+                heading.get('text', '')
+                for heading in extracted_data.headings
+                if heading.get('text')
+            ][:20],
+            'questions': extracted_data.questions[:12],
+            'answer_patterns': extracted_data.answer_patterns[:10],
+            'paragraphs': [
+                paragraph.get('text', '')
+                for paragraph in extracted_data.paragraphs
+                if paragraph.get('text')
+            ][:12],
+            'key_takeaways': extracted_data.key_takeaways[:10],
+            'schema_types': extracted_data.schema_types[:12],
+        }
     
     def _generate_simple_recommendations(self, data, scores: Dict) -> List[Dict]:
         """Generate basic recommendations based on gaps"""
@@ -102,4 +148,3 @@ async def audit_url(url: str, options: Dict = None) -> Dict:
     """Convenience function to audit a URL"""
     pipeline = AuditPipeline()
     return await pipeline.audit_page(url, options)
-

@@ -4,6 +4,13 @@
 
 The AEO Score Auditor now uses **content-aware scoring** to evaluate pages based on their purpose and intent. Different types of content have different priorities, and the scoring system adapts accordingly.
 
+There are now two complementary layers:
+
+1. **Content Type**: What kind of page this is, such as informational, transactional, experiential, or navigational.
+2. **Audit Profile**: What kind of website/business context this page belongs to, such as ecommerce, SaaS/app, publisher, local business, education, documentation, or general.
+
+Content type controls scoring weights. Audit profile controls extraction goals, applicability, and recommendation priorities.
+
 ## Content Types
 
 ### 1. **Informational** (Articles, Guides, Tutorials, FAQs)
@@ -110,6 +117,100 @@ If automatic detection doesn't match your intent, add this to your HTML `<head>`
 <meta name="aeo:content-type" content="navigational">
 ```
 
+## Business-Aware Audit Profiles
+
+Audit profiles help website owners focus on the information AI systems should extract for their specific type of website.
+
+### Available Profiles
+
+| Profile | Best For | Primary Extraction Goals |
+|---------|----------|--------------------------|
+| `auto` | Default selection | Detects the most likely profile from schema, URL, and page language |
+| `ecommerce` | Product and shopping sites | Product name, price, availability, specs, variants, reviews, shipping/returns |
+| `saas_app` | Apps, SaaS, software landing pages | App name, core use case, audience, features, platforms, pricing/trial, proof, privacy/support |
+| `publisher` | Blogs, guides, news, editorial sites | Direct answers, topic coverage, author expertise, dates, citations, key takeaways |
+| `local_business` | Local services and venues | Business name, address, service area, hours, phone, services, reviews, booking/contact |
+| `education` | Courses and learning programs | Learning outcomes, target level, curriculum, provider, duration, price, enrollment path |
+| `documentation` | Docs, API references, help centers | Tasks, prerequisites, steps, parameters, examples, errors, versions, related docs |
+| `general` | Mixed or unclear sites | Entity identity, primary topic, offering, audience fit, trust signals, next step |
+
+### Example: Language Learning App
+
+A page like `https://www.maadhyamik.com/lexifyd` should usually use the `saas_app` profile. It should not be pushed to behave like a full informational article or ecommerce product page.
+
+The audit focuses on whether AI systems can extract:
+
+- App name
+- Core use case
+- Target learner/user
+- Key features
+- Supported platforms
+- Pricing or trial details
+- Proof points
+- Privacy and support signals
+
+For this profile, citation density is lower applicability unless the page makes factual learning or research claims. SoftwareApplication, Organization, FAQPage, and Product schema are more useful than article-style author bylines.
+
+### API Usage
+
+Single-page audit:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/audit/page \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://www.maadhyamik.com/lexifyd",
+    "options": {
+      "site_profile": "saas_app"
+    }
+  }'
+```
+
+Domain audit:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/audit/domain \
+  -H "Content-Type: application/json" \
+  -d '{
+    "domain": "https://example.com",
+    "options": {
+      "max_pages": 50,
+      "site_profile": "ecommerce"
+    }
+  }'
+```
+
+The response includes:
+
+```json
+{
+  "audit_profile": {
+    "type": "saas_app",
+    "label": "SaaS / App",
+    "confidence": "manual",
+    "extraction_goals": ["app_name", "core_use_case", "target_audience"]
+  },
+  "extraction_goals": ["app_name", "core_use_case", "target_audience"],
+  "not_applicable": ["shipping_policy", "inventory_availability", "article_author_byline"],
+  "recommendations": [
+    {
+      "title": "Improve app extraction",
+      "applicability": "high",
+      "tips": ["State the app name, target learner/user, core use case, and primary outcome in one concise section."]
+    }
+  ]
+}
+```
+
+Each category in `breakdown` also includes:
+
+```json
+{
+  "applicability": "high",
+  "applicability_reason": "SoftwareApplication, Product, FAQ, and Organization schema can expose the app clearly."
+}
+```
+
 ## Scoring Adjustments by Type
 
 | Category | Default | Informational | Experiential | Transactional | Navigational |
@@ -148,4 +249,3 @@ If automatic detection doesn't match your intent, add this to your HTML `<head>`
 ---
 
 **Pro Tip**: For best results on experiential content, add Event or Place schema markup and include rich media (images, videos). The system will recognize this and adjust scoring accordingly!
-

@@ -155,14 +155,17 @@ class PDFReportGenerator:
             "CoverTitle": dict(
                 parent=self.styles["Heading1"],
                 fontSize=20,
+                leading=24,
                 textColor=STONE_900,
                 alignment=TA_CENTER,
                 spaceAfter=6,
                 fontName="Helvetica-Bold",
+                wordWrap="CJK",
             ),
             "CoverScore": dict(
                 parent=self.styles["Normal"],
                 fontSize=42,
+                leading=48,
                 textColor=STONE_900,
                 alignment=TA_CENTER,
                 fontName="Helvetica-Bold",
@@ -171,9 +174,10 @@ class PDFReportGenerator:
             "CoverGrade": dict(
                 parent=self.styles["Normal"],
                 fontSize=36,
+                leading=40,
                 alignment=TA_CENTER,
                 fontName="Helvetica-Bold",
-                spaceAfter=6,
+                spaceAfter=8,
             ),
             "Footer": dict(
                 parent=self.styles["Normal"],
@@ -204,6 +208,10 @@ class PDFReportGenerator:
             {"type": "cover"},
             {"type": "summary"},
         ]
+        if audit_result.get("positioning_analysis"):
+            chapters.append({"type": "positioning"})
+        if audit_result.get("prompt_analysis", {}).get("prompts"):
+            chapters.append({"type": "prompts"})
         for category in audit_result.get("breakdown", {}):
             chapters.append({"type": "category", "category": category})
         if audit_type == "domain" and audit_result.get("geo_score"):
@@ -271,8 +279,17 @@ class PDFReportGenerator:
             self._add_cover(story, audit_result, audit_type)
         elif ctype == "summary":
             self._add_summary(story, audit_result, audit_type)
+        elif ctype == "positioning":
+            self._add_positioning(story, audit_result)
+        elif ctype == "prompts":
+            self._add_prompt_gaps(story, audit_result)
         elif ctype == "category":
-            self._add_category(story, chapter["category"], audit_result, detailed, chapter_index - 2)
+            extra_offset = 0
+            if audit_result.get("positioning_analysis"):
+                extra_offset += 1
+            if audit_result.get("prompt_analysis", {}).get("prompts"):
+                extra_offset += 1
+            self._add_category(story, chapter["category"], audit_result, detailed, chapter_index - 2 - extra_offset)
         elif ctype == "geo":
             self._add_geo(story, audit_result)
         elif ctype == "actions":
@@ -303,9 +320,15 @@ class PDFReportGenerator:
         story.append(Paragraph(f"{score}", self.styles["CoverScore"]))
         story.append(Paragraph(
             f'<font color="#a8a29e">/ 100</font>',
-            ParagraphStyle(name="CoverMax", parent=self.styles["Normal"], alignment=TA_CENTER, fontSize=14),
+            ParagraphStyle(
+                name="CoverMax",
+                parent=self.styles["Normal"],
+                alignment=TA_CENTER,
+                fontSize=14,
+                leading=16,
+                spaceAfter=8,
+            ),
         ))
-        story.append(Spacer(1, 0.1 * inch))
         story.append(Paragraph(
             f'<font color="{grade_color_hex(grade)}">{grade}</font>',
             self.styles["CoverGrade"],
@@ -313,7 +336,7 @@ class PDFReportGenerator:
         story.append(Paragraph(
             f'{get_score_label(score)} &nbsp;·&nbsp; {datetime.now().strftime("%B %d, %Y")}',
             ParagraphStyle(name="CoverMeta", parent=self.styles["Normal"], alignment=TA_CENTER,
-                           textColor=STONE_600, fontSize=10),
+                           textColor=STONE_600, fontSize=10, leading=13, spaceAfter=8),
         ))
 
         classification = audit_result.get("content_classification")
@@ -327,6 +350,17 @@ class PDFReportGenerator:
                 f'<font color="#57534e"><i>{desc}</i></font>',
                 ParagraphStyle(name="ContentType", parent=self.styles["Normal"], fontSize=9,
                                backColor=HexColor("#f5f5f4"), borderPadding=8),
+            ))
+
+        audit_profile = audit_result.get("audit_profile")
+        if audit_profile:
+            story.append(Spacer(1, 0.12 * inch))
+            story.append(Paragraph(
+                f'<b>Audit Profile:</b> {audit_profile.get("label", "General")} '
+                f'({audit_profile.get("confidence", "medium")} confidence)<br/>'
+                f'<font color="#57534e"><i>{audit_profile.get("description", "")}</i></font>',
+                ParagraphStyle(name="AuditProfile", parent=self.styles["Normal"], fontSize=9,
+                               backColor=HexColor("#eef2ff"), borderPadding=8),
             ))
 
     def _add_summary(self, story: List[Any], audit_result: Dict[str, Any], audit_type: str):
@@ -363,6 +397,15 @@ class PDFReportGenerator:
                     f"weakest page scores {worst.get('overall_score', 0)}/100."
                 )
 
+        audit_profile = audit_result.get("audit_profile")
+        if audit_profile:
+            goals = audit_profile.get("extraction_goals", [])[:4]
+            if goals:
+                insights.append(
+                    f"Audit profile: {audit_profile.get('label')} focuses on "
+                    f"{', '.join(g.replace('_', ' ') for g in goals)}."
+                )
+
         for insight in insights:
             story.append(Paragraph(f"• {insight}", self.styles["InsightBullet"]))
 
@@ -377,6 +420,15 @@ class PDFReportGenerator:
             ))
             story.append(ProgressBar(pct))
             story.append(Spacer(1, 0.08 * inch))
+
+        extraction_goals = audit_result.get("extraction_goals") or []
+        if extraction_goals:
+            story.append(Spacer(1, 0.15 * inch))
+            story.append(Paragraph("EXTRACTION GOALS", self.styles["SectionLabel"]))
+            story.append(Paragraph(
+                ", ".join(goal.replace("_", " ") for goal in extraction_goals[:10]),
+                self.styles["BodyText"],
+            ))
 
         if audit_type == "domain":
             best = audit_result.get("best_page")
@@ -409,6 +461,116 @@ class PDFReportGenerator:
                 ]))
                 story.append(t)
 
+    def _add_positioning(self, story: List[Any], audit_result: Dict[str, Any]):
+        analysis = audit_result.get("positioning_analysis", {})
+        story.append(Paragraph("POSITIONING", self.styles["ChapterKicker"]))
+        story.append(Paragraph("USP & Realistic Wedge", self.styles["ChapterTitle"]))
+        story.append(Paragraph(
+            analysis.get("likely_wedge", "No clear positioning wedge detected."),
+            ParagraphStyle(name="Wedge", parent=self.styles["BodyText"], fontSize=11, textColor=INDIGO, spaceAfter=10),
+        ))
+        story.append(Paragraph(
+            f'<b>Evidence strength:</b> {analysis.get("evidence_strength", "missing").title()} &nbsp;&nbsp; '
+            f'<b>Market scope:</b> {analysis.get("market_scope", "unknown").title()}',
+            self.styles["BodyText"],
+        ))
+        story.append(Spacer(1, 0.12 * inch))
+
+        rows = [["USP Signals", "Scope / Proof To Add"]]
+        usp_text = "<br/>".join(analysis.get("usp_claims", [])[:6]) or "No clear USP signals found."
+        proof_items = analysis.get("constraints", [])[:3] + analysis.get("recommended_proof", [])[:4]
+        proof_text = "<br/>".join(proof_items) or "Clarify positioning and proof points."
+        rows.append([
+            Paragraph(usp_text, ParagraphStyle(name="USPCell", parent=self.styles["BodyText"], fontSize=8)),
+            Paragraph(proof_text, ParagraphStyle(name="ProofCell", parent=self.styles["BodyText"], fontSize=8)),
+        ])
+        t = Table(rows, colWidths=[3.0 * inch, 3.3 * inch])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), HexColor("#eef2ff")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), INDIGO),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ]))
+        story.append(t)
+
+        evidence = analysis.get("evidence", [])
+        if evidence:
+            story.append(Spacer(1, 0.15 * inch))
+            story.append(Paragraph("BEST PROOF FOUND", self.styles["SectionLabel"]))
+            story.append(Paragraph(
+                evidence[0].get("text", ""),
+                ParagraphStyle(name="PositioningEvidence", parent=self.styles["BodyText"], fontSize=8, textColor=STONE_600),
+            ))
+
+    def _add_prompt_gaps(self, story: List[Any], audit_result: Dict[str, Any]):
+        analysis = audit_result.get("prompt_analysis", {})
+        summary = analysis.get("summary", {})
+        counts = summary.get("coverage_counts", {})
+        prompts = analysis.get("prompts", [])
+        priority = [p for p in prompts if p.get("coverage") != "strong"][:8] or prompts[:8]
+
+        story.append(Paragraph("PROMPT PORTFOLIO", self.styles["ChapterKicker"]))
+        story.append(Paragraph("Local Answerability Gaps", self.styles["ChapterTitle"]))
+        story.append(Paragraph(
+            f"Simulated against crawled site content for {analysis.get('brand', 'this site')}. "
+            "These prompts show whether local evidence exists for likely AI-answer questions.",
+            self.styles["ChapterSubtitle"],
+        ))
+
+        mode = analysis.get("evaluation_mode", "deterministic")
+        llm_meta = analysis.get("llm_evaluation", {})
+        if mode == "llm":
+            mode_text = (
+                f"LLM evaluated with {llm_meta.get('provider', 'provider')} "
+                f"{llm_meta.get('model', '')} across {llm_meta.get('evaluated_prompts', 0)} prompts."
+            )
+        else:
+            mode_text = f"Deterministic local retrieval mode. {llm_meta.get('reason', '')}"
+        story.append(Paragraph(
+            mode_text,
+            ParagraphStyle(name="PromptMode", parent=self.styles["BodyText"], fontSize=8, textColor=STONE_600),
+        ))
+        story.append(Spacer(1, 0.08 * inch))
+
+        story.append(Paragraph(
+            f'<b>Coverage score:</b> {summary.get("coverage_score", 0)}% &nbsp;&nbsp; '
+            f'<font color="#10b981">Strong: {counts.get("strong", 0)}</font> &nbsp; '
+            f'<font color="#f59e0b">Partial: {counts.get("partial", 0)}</font> &nbsp; '
+            f'<font color="#f97316">Weak: {counts.get("weak", 0)}</font> &nbsp; '
+            f'<font color="#f43f5e">Missing: {counts.get("missing", 0)}</font>',
+            self.styles["BodyText"],
+        ))
+        story.append(Spacer(1, 0.15 * inch))
+
+        rows = [["Prompt", "Coverage", "Fix"]]
+        for prompt in priority:
+            rows.append([
+                Paragraph(prompt.get("prompt", ""), ParagraphStyle(name="PromptCell", parent=self.styles["BodyText"], fontSize=8)),
+                Paragraph(
+                    f'<b>{prompt.get("coverage", "").title()}</b><br/>{prompt.get("answerability_score", 0)}/100',
+                    ParagraphStyle(name="CoverageCell", parent=self.styles["BodyText"], fontSize=8),
+                ),
+                Paragraph(prompt.get("recommended_fix", ""), ParagraphStyle(name="FixCell", parent=self.styles["BodyText"], fontSize=8)),
+            ])
+
+        t = Table(rows, colWidths=[2.45 * inch, 0.9 * inch, 2.95 * inch])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), HexColor("#eef2ff")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), INDIGO),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(t)
+
     def _add_category(
         self,
         story: List[Any],
@@ -425,6 +587,13 @@ class PDFReportGenerator:
         story.append(Paragraph(f"CATEGORY {cat_index}", self.styles["ChapterKicker"]))
         story.append(Paragraph(format_category_name(category), self.styles["ChapterTitle"]))
         story.append(Paragraph(get_category_description(category), self.styles["ChapterSubtitle"]))
+        if data.get("applicability"):
+            story.append(Paragraph(
+                f'<b>{data.get("applicability", "").upper()} APPLICABILITY</b><br/>'
+                f'{data.get("applicability_reason", "")}',
+                ParagraphStyle(name="Applicability", parent=self.styles["BodyText"], fontSize=9,
+                               backColor=HexColor("#eef2ff"), borderPadding=8, spaceAfter=10),
+            ))
         story.append(Paragraph(
             f'<font color="{score_color_hex(pct)}"><b>{score}</b></font>'
             f'<font color="#a8a29e">/{max_score}</font>'
@@ -546,8 +715,9 @@ class PDFReportGenerator:
         )
         geo = audit_result.get("geo_score") or {}
         geo_actions = geo.get("recommended_actions", [])
+        extraction_recommendations = audit_result.get("recommendations", [])
 
-        if not weak and not geo_actions:
+        if not extraction_recommendations and not weak and not geo_actions:
             story.append(Paragraph(
                 "<b>Strong performance across the board.</b><br/>"
                 "Maintain content freshness and monitor scores as you publish new pages.",
@@ -561,7 +731,22 @@ class PDFReportGenerator:
                 story.append(Paragraph(f"<b>{i}.</b> {action}", self.styles["BodyText"]))
                 story.append(Spacer(1, 0.06 * inch))
 
-        if weak:
+        if extraction_recommendations:
+            story.append(Paragraph("EXTRACTION PRIORITIES", self.styles["SectionLabel"]))
+            for recommendation in extraction_recommendations:
+                tips = recommendation.get("tips", [])
+                tip_text = "<br/>".join(tips)
+                applicability = recommendation.get("applicability")
+                label = f" ({applicability})" if applicability else ""
+                story.append(Paragraph(
+                    f'<b>{recommendation.get("title", "Improve extraction readiness")}{label}</b><br/>'
+                    f'<font color="#57534e"><i>{recommendation.get("reason", "")}</i></font><br/>'
+                    f'{tip_text}',
+                    ParagraphStyle(name="ExtractionAction", parent=self.styles["BodyText"], fontSize=9,
+                                   backColor=HexColor("#eef2ff"), borderPadding=8, spaceAfter=10),
+                ))
+
+        if not extraction_recommendations and weak:
             story.append(Spacer(1, 0.1 * inch))
             story.append(Paragraph("AEO IMPROVEMENT AREAS", self.styles["SectionLabel"]))
             for category, data in weak:

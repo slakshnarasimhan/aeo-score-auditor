@@ -21,6 +21,8 @@ class AuditOptions(BaseModel):
     wait_for_completion: bool = False
     priority: str = "normal"
     calculate_geo: bool = True  # Include GEO score in domain audits
+    site_profile: str = "auto"  # auto, ecommerce, saas_app, publisher, local_business, education, documentation, general
+    llm_prompt_eval: bool = False  # Use an LLM to judge prompt answerability from local evidence
 
 
 class PageAuditRequest(BaseModel):
@@ -113,7 +115,7 @@ async def audit_domain(request: DomainAuditRequest, background_tasks: Background
     progress_tracker.create_job(job_id, total_urls=max_pages)
     
     # Run audit in background
-    background_tasks.add_task(_run_domain_audit, job_id, domain_url, max_pages)
+    background_tasks.add_task(_run_domain_audit, job_id, domain_url, max_pages, request.options or {})
     
     return {
         "job_id": job_id,
@@ -125,8 +127,9 @@ async def audit_domain(request: DomainAuditRequest, background_tasks: Background
     }
 
 
-async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
+async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int, options: Dict[str, Any] = None):
     """Background task to run domain audit with GEO scoring"""
+    options = options or {}
     try:
         from crawler.domain_crawler import DomainAuditOrchestrator
         from progress_tracker import progress_tracker
@@ -135,7 +138,8 @@ async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
         orchestrator = DomainAuditOrchestrator(
             max_pages=max_pages,
             max_concurrent=3,
-            job_id=job_id
+            job_id=job_id,
+            options=options
         )
         result = await orchestrator.audit_domain(domain_url)
         
@@ -185,6 +189,11 @@ async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int):
         
         # Store result in progress tracker (separate storage for reliability)
         progress_tracker.store_result(job_id, result)
+        progress_tracker.complete_job(
+            job_id,
+            success=True,
+            message=f"Completed! Average score: {result.get('overall_score', 0)}/100"
+        )
         
         logger.info(f"Domain audit completed: {job_id}, result stored")
         logger.debug(f"Result keys: {result.keys() if result else 'None'}")
@@ -235,6 +244,28 @@ async def get_domain_result(job_id: str):
         "status": progress.status,
         "result": result
     }
+
+
+@router.get("/domain/status/{job_id}")
+async def get_domain_status(job_id: str):
+    """
+    Get current domain audit progress as JSON.
+    Useful as a fallback when the SSE connection is unavailable.
+    """
+    from progress_tracker import progress_tracker
+
+    progress = progress_tracker.get_progress(job_id)
+
+    if not progress:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    data = progress.to_dict()
+    if progress.status in ["completed", "failed"]:
+        result = progress_tracker.get_result(job_id) or progress.result
+        if result:
+            data["result"] = result
+
+    return data
 
 
 @router.get("/domain/progress/{job_id}")
@@ -389,4 +420,3 @@ async def download_pdf_report(request: PDFRequest):
         import traceback
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
-

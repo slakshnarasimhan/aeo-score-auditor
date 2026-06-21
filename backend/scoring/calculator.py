@@ -11,6 +11,7 @@ from .content_quality import ContentQualityScorer
 from .citationability import CitationabilityScorer
 from .technical import TechnicalScorer
 from .content_profiles import get_profile
+from .audit_profiles import AUTO_PROFILE, get_audit_profile, infer_audit_profile
 
 
 class AEOScoreCalculator:
@@ -26,7 +27,7 @@ class AEOScoreCalculator:
             'technical': TechnicalScorer()
         }
     
-    def calculate_score(self, page_data) -> Dict:
+    def calculate_score(self, page_data, options: Dict = None) -> Dict:
         """
         Calculate complete AEO score with content-aware scoring
         
@@ -36,6 +37,8 @@ class AEOScoreCalculator:
         Returns:
             Complete score breakdown with content-aware weights applied
         """
+        options = options or {}
+
         # Convert to dict if it's an object
         if hasattr(page_data, 'to_dict'):
             page_data = page_data.to_dict()
@@ -47,9 +50,15 @@ class AEOScoreCalculator:
         content_type = content_classification.get('type', 'informational')
         confidence = content_classification.get('confidence', 'low')
         profile = get_profile(content_type)
+
+        # Get broader business/site audit profile
+        requested_audit_profile = options.get('site_profile') or options.get('audit_profile') or AUTO_PROFILE
+        audit_profile = infer_audit_profile(page_data, requested_audit_profile)
+        audit_profile_config = get_audit_profile(audit_profile.get('type'))
         
         logger.info(f"Content type: {content_type} (confidence: {confidence})")
         logger.info(f"Using scoring profile: {profile.name}")
+        logger.info(f"Using audit profile: {audit_profile.get('label')} ({audit_profile.get('confidence')})")
         
         # Step 1: Calculate all raw scores
         raw_scores = {}
@@ -112,6 +121,9 @@ class AEOScoreCalculator:
             bucket_score['max'] = round(rebalanced_max, 1)
             bucket_score['weight_applied'] = weight
             bucket_score['percentage'] = round(percentage_earned * 100, 1)
+            applicability = audit_profile_config.applicability_for(bucket_name)
+            bucket_score['applicability'] = applicability.get('level', 'medium')
+            bucket_score['applicability_reason'] = applicability.get('reason', '')
             
             if weight != 1.0:
                 logger.debug(f"{bucket_name}: {earned_score:.1f}/{original_max} ({percentage_earned*100:.0f}%) → {rebalanced_score:.1f}/{rebalanced_max:.1f} (weight: {weight}x)")
@@ -136,6 +148,9 @@ class AEOScoreCalculator:
                 'percentage': 0,
                 'note': 'AI citation analysis not performed'
             }
+        ai_applicability = audit_profile_config.applicability_for('ai_citation')
+        scores['ai_citation']['applicability'] = ai_applicability.get('level', 'medium')
+        scores['ai_citation']['applicability_reason'] = ai_applicability.get('reason', '')
         
         # Calculate overall score
         overall_score = sum(s['score'] for s in scores.values())
@@ -150,7 +165,10 @@ class AEOScoreCalculator:
                 'confidence': confidence,
                 'profile_used': profile.name,
                 'description': content_classification.get('description', '')
-            }
+            },
+            'audit_profile': audit_profile,
+            'extraction_goals': audit_profile.get('extraction_goals', []),
+            'not_applicable': audit_profile.get('not_applicable', [])
         }
         
         logger.info(f"Final score: {overall_score} ({grade}) - Content type: {content_type}")
@@ -188,4 +206,3 @@ if __name__ == "__main__":
     
     result = calculator.calculate_score(sample_data)
     print(result)
-

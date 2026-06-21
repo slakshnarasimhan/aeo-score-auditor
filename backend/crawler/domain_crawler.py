@@ -2,7 +2,7 @@
 Domain-wide crawler for discovering and auditing multiple pages
 """
 import asyncio
-from typing import List, Set, Dict, Optional
+from typing import Callable, List, Set, Dict, Optional
 from urllib.parse import urljoin, urlparse, urlunparse
 from loguru import logger
 import xml.etree.ElementTree as ET
@@ -13,7 +13,12 @@ from bs4 import BeautifulSoup
 class DomainCrawler:
     """Discovers URLs across a domain"""
     
-    def __init__(self, max_pages: int = 10, max_depth: int = 5):
+    def __init__(
+        self,
+        max_pages: int = 10,
+        max_depth: int = 5,
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+    ):
         """
         Initialize domain crawler
         
@@ -25,6 +30,11 @@ class DomainCrawler:
         self.max_depth = max_depth
         self.visited: Set[str] = set()
         self.discovered: Set[str] = set()
+        self.progress_callback = progress_callback
+
+    def _report_discovery_progress(self, count: int, message: str):
+        if self.progress_callback:
+            self.progress_callback(min(count, self.max_pages), message)
     
     async def discover_urls(self, domain_url: str) -> List[str]:
         """
@@ -121,6 +131,10 @@ class DomainCrawler:
                             logger.debug(f"Failed to fetch child sitemap: {result}")
                     
                     logger.info(f"Processed {min(i + batch_size, len(child_sitemaps))}/{len(child_sitemaps)} child sitemaps, found {len(urls)} URLs so far...")
+                    self._report_discovery_progress(
+                        len(urls),
+                        f"Processed {min(i + batch_size, len(child_sitemaps))}/{len(child_sitemaps)} sitemaps"
+                    )
                     
                     # Small delay between batches to be respectful
                     if i + batch_size < len(child_sitemaps):
@@ -136,6 +150,8 @@ class DomainCrawler:
                     # Filter out non-page URLs
                     if self._is_valid_page_url(url):
                         urls.append(url)
+                        if len(urls) % 10 == 0:
+                            self._report_discovery_progress(len(urls), f"Found {len(urls)} URLs in sitemap")
             
             return urls
             
@@ -214,6 +230,7 @@ class DomainCrawler:
                         continue
                     
                     discovered.add(url)
+                    self._report_discovery_progress(len(discovered), f"Found {len(discovered)} URLs while crawling")
                     
                     # Parse and find more links
                     if depth < self.max_depth:
@@ -271,7 +288,13 @@ class DomainCrawler:
 class DomainAuditOrchestrator:
     """Orchestrates auditing multiple pages across a domain"""
     
-    def __init__(self, max_pages: int = 100, max_concurrent: int = 3, job_id: Optional[str] = None):
+    def __init__(
+        self,
+        max_pages: int = 100,
+        max_concurrent: int = 3,
+        job_id: Optional[str] = None,
+        options: Optional[Dict] = None,
+    ):
         """
         Initialize orchestrator
         
@@ -282,13 +305,27 @@ class DomainAuditOrchestrator:
         """
         self.max_pages = max_pages if max_pages > 0 else 9999
         self.max_concurrent = max_concurrent
-        self.crawler = DomainCrawler(max_pages=self.max_pages)
         self.job_id = job_id
+        self.options = options or {}
         self.tracker = None
         
         if job_id:
             from progress_tracker import progress_tracker
             self.tracker = progress_tracker
+        self.crawler = DomainCrawler(
+            max_pages=self.max_pages,
+            progress_callback=self._update_discovery_progress,
+        )
+
+    def _update_discovery_progress(self, urls_discovered: int, message: str):
+        if self.tracker and self.job_id:
+            self.tracker.update(
+                self.job_id,
+                status="discovering",
+                current_step=message,
+                urls_discovered=urls_discovered,
+                message=message,
+            )
     
     async def audit_domain(self, domain_url: str) -> Dict:
         """
@@ -347,7 +384,7 @@ class DomainAuditOrchestrator:
         # Process in batches
         for i in range(0, len(urls), self.max_concurrent):
             batch = urls[i:i + self.max_concurrent]
-            batch_tasks = [pipeline.audit_page(url) for url in batch]
+            batch_tasks = [pipeline.audit_page(url, self.options) for url in batch]
             batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
             
             for url, result in zip(batch, batch_results):
@@ -378,12 +415,16 @@ class DomainAuditOrchestrator:
         # Step 3: Aggregate results
         aggregated = self._aggregate_results(domain_url, page_results)
         
-        # Report completion
+        # Report aggregation. The route stores the result before marking the
+        # job complete so SSE listeners can reliably fetch the final payload.
         if self.tracker and self.job_id:
-            self.tracker.complete_job(
+            self.tracker.update(
                 self.job_id,
-                success=True,
-                message=f"Completed! Average score: {aggregated['overall_score']}/100"
+                status="auditing",
+                current_step="Finalizing report...",
+                pages_audited=len(page_results),
+                total_urls=len(urls),
+                message=f"Calculated average score: {aggregated['overall_score']}/100"
             )
         
         logger.info(f"Domain audit complete: {aggregated['overall_score']}/100")
@@ -431,10 +472,26 @@ class DomainAuditOrchestrator:
                     'score': round(avg_category_score, 1),
                     'max': score_data['max'],
                     'percentage': round((avg_category_score / score_data['max']) * 100, 1),
+                    'applicability': score_data.get('applicability', 'medium'),
+                    'applicability_reason': score_data.get('applicability_reason', ''),
                     'page_scores': page_scores,  # Per-page scores for this category
                     'best_page': max(page_scores, key=lambda x: x['score']),
                     'worst_page': min(page_scores, key=lambda x: x['score'])
                 }
+
+        audit_profiles = {}
+        for result in valid_results:
+            profile_type = (result.get('audit_profile') or {}).get('type', 'general')
+            audit_profiles[profile_type] = audit_profiles.get(profile_type, 0) + 1
+
+        content_types = {}
+        for result in valid_results:
+            content_type = (result.get('content_classification') or {}).get('type', 'unknown')
+            content_types[content_type] = content_types.get(content_type, 0) + 1
+
+        primary_profile = first_result.get('audit_profile')
+        extraction_goals = first_result.get('extraction_goals', [])
+        not_applicable = first_result.get('not_applicable', [])
         
         # Determine grade
         if avg_score >= 90:
@@ -450,7 +507,7 @@ class DomainAuditOrchestrator:
         else:
             grade = 'F'
         
-        return {
+        aggregated = {
             'domain': domain_url,
             'overall_score': round(avg_score, 1),
             'grade': grade,
@@ -459,6 +516,40 @@ class DomainAuditOrchestrator:
             'breakdown': breakdown,
             'page_results': valid_results,  # Include individual page results
             'best_page': max(valid_results, key=lambda x: x['overall_score']),
-            'worst_page': min(valid_results, key=lambda x: x['overall_score'])
+            'worst_page': min(valid_results, key=lambda x: x['overall_score']),
+            'audit_profile': primary_profile,
+            'audit_profile_distribution': audit_profiles,
+            'content_type_distribution': content_types,
+            'extraction_goals': extraction_goals,
+            'not_applicable': not_applicable,
         }
 
+        try:
+            from reporting.recommendation_generator import RecommendationGenerator
+            aggregated['recommendations'] = RecommendationGenerator().generate_extraction_recommendations(aggregated)
+        except Exception as e:
+            logger.warning(f"Failed to generate domain recommendations: {e}")
+            aggregated['recommendations'] = []
+
+        try:
+            from reporting.prompt_gap_analyzer import PromptGapAnalyzer
+            from reporting.positioning_analyzer import PositioningAnalyzer
+            aggregated['positioning_analysis'] = PositioningAnalyzer().analyze(
+                valid_results,
+                domain_url,
+                primary_profile,
+            )
+            aggregated['prompt_analysis'] = PromptGapAnalyzer().analyze(
+                valid_results,
+                domain_url,
+                primary_profile,
+                max_prompts=24,
+                use_llm=bool(self.options.get('llm_prompt_eval')),
+                positioning=aggregated['positioning_analysis'],
+            )
+        except Exception as e:
+            logger.warning(f"Failed to generate prompt gap analysis: {e}")
+            aggregated['prompt_analysis'] = {}
+            aggregated['positioning_analysis'] = {}
+
+        return aggregated

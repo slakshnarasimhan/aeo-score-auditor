@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     AI_CITATION_PROMPT_COUNT: int = 20
     AI_CITATION_ENGINES: list = ["gpt4", "gemini", "perplexity"]
     AI_CITATION_CACHE_TTL: int = 604800  # 1 week
+    PROMPT_EVAL_MODEL: str = "gpt-4o-mini"
+    PROMPT_EVAL_MAX_PROMPTS: int = 12
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
@@ -75,4 +77,3 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
-

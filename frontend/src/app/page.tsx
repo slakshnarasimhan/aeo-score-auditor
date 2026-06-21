@@ -16,10 +16,61 @@ interface ProgressUpdate {
   current_url?: string;
 }
 
+const PROFILE_OPTIONS = [
+  { value: 'auto', label: 'Auto-detect' },
+  { value: 'ecommerce', label: 'Ecommerce' },
+  { value: 'saas_app', label: 'SaaS / App' },
+  { value: 'publisher', label: 'Publisher / Blog' },
+  { value: 'local_business', label: 'Local Business' },
+  { value: 'education', label: 'Education / Course' },
+  { value: 'documentation', label: 'Documentation' },
+  { value: 'general', label: 'General Website' },
+];
+
+function ProfileSelector({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <label htmlFor="site-profile" className="block text-sm font-semibold text-gray-800">
+            Website Profile
+          </label>
+          <p className="mt-1 text-xs text-gray-500">
+            Choose the extraction lens for recommendations, or let the auditor infer it.
+          </p>
+        </div>
+        <select
+          id="site-profile"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-64"
+          disabled={disabled}
+        >
+          {PROFILE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [url, setUrl] = useState<string>('');
   const [domain, setDomain] = useState<string>('');
   const [maxPages, setMaxPages] = useState<number>(100);
+  const [siteProfile, setSiteProfile] = useState<string>('auto');
+  const [llmPromptEval, setLlmPromptEval] = useState<boolean>(false);
   const [auditType, setAuditType] = useState<'page' | 'domain'>('page');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,80 +87,90 @@ export default function Home() {
     if (!jobId) return;
 
     const eventSource = new EventSource(`${API_URL}/api/v1/audit/domain/progress/${jobId}`);
-    let completionTimeout: NodeJS.Timeout;
+    let completionTimeout: ReturnType<typeof setTimeout> | undefined;
+    let pollInterval: ReturnType<typeof setInterval> | undefined;
+
+    const stopTracking = () => {
+      eventSource.close();
+      if (completionTimeout) clearTimeout(completionTimeout);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+
+    const finishWithResult = (result: DomainAuditResult) => {
+      setDomainResult(result);
+      setProgress(null);
+      setLoading(false);
+      setJobId(null);
+      stopTracking();
+    };
+
+    const handleProgressData = (data: any) => {
+      console.log('Progress received:', data);
+
+      if (data.status === 'done' && data.result) {
+        finishWithResult(data.result);
+        return;
+      }
+
+      setProgress(data);
+
+      if (data.status === 'failed') {
+        setError(data.message || 'Domain audit failed.');
+        setLoading(false);
+        setJobId(null);
+        stopTracking();
+        return;
+      }
+
+      if (data.status === 'completed' && data.result) {
+        finishWithResult(data.result);
+        return;
+      }
+
+      if (data.status === 'completed') {
+        if (completionTimeout) clearTimeout(completionTimeout);
+        completionTimeout = setTimeout(async () => {
+          try {
+            const response = await fetch(`${API_URL}/api/v1/audit/domain/result/${jobId}`);
+            if (response.ok) {
+              const resultData = await response.json();
+              finishWithResult(resultData.result);
+            }
+          } catch (err) {
+            console.error('Failed to fetch completed result:', err);
+          }
+        }, 1000);
+      }
+    };
 
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('SSE received:', data); // Debug log
-        console.log('Progress values:', {
-          status: data.status,
-          percentage: data.percentage,
-          pages_audited: data.pages_audited,
-          total_urls: data.total_urls,
-          urls_discovered: data.urls_discovered
-        });
-        
-        if (data.status === 'done' && data.result) {
-          // Final result received via SSE
-          console.log('Final result received via SSE:', data.result);
-          setDomainResult(data.result);
-          setProgress(null);
-          setLoading(false);
-          setJobId(null);
-          eventSource.close();
-          if (completionTimeout) clearTimeout(completionTimeout);
-        } else if (data.status === 'completed' && data.percentage === 100) {
-          // Progress shows completed, wait for result or fetch it
-          console.log('Audit completed at 100%, waiting for result...');
-          console.log('Setting progress to:', data);
-          setProgress(data);
-          
-          // Fallback: If result doesn't arrive via SSE in 2 seconds, fetch it directly
-          completionTimeout = setTimeout(async () => {
-            console.log('Result not received via SSE, fetching directly...');
-            try {
-              // Fetch the completed result directly
-              const response = await fetch(`${API_URL}/api/v1/audit/domain/result/${jobId}`);
-              if (response.ok) {
-                const resultData = await response.json();
-                console.log('Result fetched directly:', resultData);
-                setDomainResult(resultData.result);
-                setProgress(null);
-                setLoading(false);
-                setJobId(null);
-                eventSource.close();
-              }
-            } catch (err) {
-              console.error('Failed to fetch result:', err);
-              setError('Audit completed but failed to fetch results. Please try again.');
-              setProgress(null);
-              setLoading(false);
-              setJobId(null);
-              eventSource.close();
-            }
-          }, 2000);
-        } else {
-          // Progress update
-          console.log('Regular progress update, setting progress to:', data);
-          setProgress(data);
-        }
+        handleProgressData(data);
       } catch (e) {
         console.error('Failed to parse SSE data:', e, 'Event data:', event.data);
       }
     };
 
     eventSource.onerror = () => {
-      console.error('SSE connection error');
+      console.error('SSE connection error; continuing with polling fallback');
       eventSource.close();
-      setLoading(false);
-      setJobId(null);
-      if (completionTimeout) clearTimeout(completionTimeout);
     };
 
+    pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/v1/audit/domain/status/${jobId}`);
+        if (response.ok) {
+          const data = await response.json();
+          handleProgressData(data);
+        }
+      } catch (err) {
+        console.error('Failed to poll domain audit status:', err);
+      }
+    }, 1500);
+
     return () => {
-      eventSource.close();
-      if (completionTimeout) clearTimeout(completionTimeout);
+      stopTracking();
     };
   }, [jobId]);
 
@@ -127,7 +188,12 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url, deep_crawl: false, re_audit: false }),
+        body: JSON.stringify({
+          url,
+          deep_crawl: false,
+          re_audit: false,
+          options: { site_profile: siteProfile, llm_prompt_eval: llmPromptEval },
+        }),
       });
 
       if (!response.ok) {
@@ -165,7 +231,11 @@ export default function Home() {
         },
         body: JSON.stringify({ 
           domain, 
-          options: { max_pages: maxPages } 
+          options: {
+            max_pages: maxPages,
+            site_profile: siteProfile,
+            llm_prompt_eval: llmPromptEval,
+          } 
         }),
       });
 
@@ -305,6 +375,30 @@ export default function Home() {
           </button>
         </div>
 
+        <ProfileSelector
+          value={siteProfile}
+          onChange={setSiteProfile}
+          disabled={loading}
+        />
+
+        <label className="mb-6 flex items-start gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-stone-700">
+          <input
+            type="checkbox"
+            checked={llmPromptEval}
+            onChange={(e) => setLlmPromptEval(e.target.checked)}
+            disabled={loading}
+            className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500"
+          />
+          <span>
+            <span className="block font-semibold text-stone-900">
+              LLM-check prompt answers
+            </span>
+            <span className="text-xs text-stone-500">
+              Uses OpenAI when configured to judge whether retrieved site evidence truly answers each prompt.
+            </span>
+          </span>
+        </label>
+
         {/* Forms */}
         {auditType === 'page' ? (
           <form onSubmit={handlePageAudit} className="flex flex-col gap-4">
@@ -336,7 +430,7 @@ export default function Home() {
               required
               disabled={loading}
             />
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Max Pages (0 for unlimited)

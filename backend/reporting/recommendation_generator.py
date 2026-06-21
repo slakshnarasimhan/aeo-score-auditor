@@ -9,6 +9,109 @@ class RecommendationGenerator:
     
     def __init__(self):
         self.category_tips = self._initialize_category_tips()
+        self.profile_actions = self._initialize_profile_actions()
+
+    def _initialize_profile_actions(self) -> Dict[str, Dict[str, Any]]:
+        """Profile-specific extraction actions for business-aware audits"""
+        return {
+            'ecommerce': {
+                'title': 'Improve product extraction',
+                'actions': [
+                    'Add Product, Offer, AggregateRating, Review, and BreadcrumbList schema to product pages.',
+                    'Expose price, availability, SKU, variants, shipping, and return policy as visible text.',
+                    'Use comparison/specification tables for dimensions, materials, compatibility, and differentiators.',
+                    'Summarize review themes and trust signals near the product facts.',
+                ],
+                'category_focus': {
+                    'structured_data': 'Prioritize Product, Offer, AggregateRating, Review, and BreadcrumbList markup.',
+                    'technical': 'Make price, inventory, and variant details visible in crawlable HTML.',
+                    'answerability': 'Answer buyer objections such as sizing, compatibility, shipping, and returns.',
+                    'authority': 'Surface reviews, warranty, merchant identity, and policy links.',
+                    'citationability': 'Use product specs and comparison tables instead of research-style citation work.',
+                },
+            },
+            'saas_app': {
+                'title': 'Improve app extraction',
+                'actions': [
+                    'State the app name, target learner/user, core use case, and primary outcome in one concise section.',
+                    'List key features, supported platforms, pricing or trial details, and support/privacy links as structured content.',
+                    'Add SoftwareApplication, Organization, FAQPage, and Product schema where applicable.',
+                    'Use screenshots, demos, testimonials, and proof points with descriptive captions or alt text.',
+                ],
+                'category_focus': {
+                    'structured_data': 'Add SoftwareApplication, Organization, FAQPage, and Product schema for app identity and offer details.',
+                    'answerability': 'Add focused FAQs for fit, setup, pricing, privacy, supported platforms, and learning method.',
+                    'authority': 'Show company identity, product proof, testimonials, policies, and support access.',
+                    'content_quality': 'Make features, audience, and outcomes concrete instead of relying on broad marketing copy.',
+                    'citationability': 'Do not chase dense citations unless the page makes factual learning or research claims.',
+                },
+            },
+            'publisher': {
+                'title': 'Improve answer extraction',
+                'actions': [
+                    'Lead with direct answers and short summaries for the questions the page targets.',
+                    'Add author credentials, publication/update dates, source citations, and references.',
+                    'Use FAQ, Article, BlogPosting, Person, and Organization schema where relevant.',
+                    'Add quotable facts, definitions, tables, and key takeaways.',
+                ],
+                'category_focus': {
+                    'answerability': 'Use direct answer blocks, question headings, and concise summaries.',
+                    'authority': 'Add author, date, editorial, and source signals.',
+                    'citationability': 'Add facts, statistics, references, and tables that can be cited confidently.',
+                },
+            },
+            'local_business': {
+                'title': 'Improve local business extraction',
+                'actions': [
+                    'Make business name, address, phone, service area, opening hours, and booking/contact path explicit.',
+                    'Add LocalBusiness, Service, PostalAddress, AggregateRating, and FAQPage schema.',
+                    'Create service pages with clear coverage, pricing cues, reviews, and location context.',
+                    'Keep NAP details consistent across pages.',
+                ],
+                'category_focus': {
+                    'structured_data': 'Prioritize LocalBusiness, Service, PostalAddress, openingHours, and AggregateRating markup.',
+                    'authority': 'Surface reviews, licenses, service proof, and contact details.',
+                    'citationability': 'Focus on business facts rather than research citations.',
+                },
+            },
+            'education': {
+                'title': 'Improve learning-offer extraction',
+                'actions': [
+                    'State learning outcomes, target level, curriculum, duration, instructor/provider, and enrollment path.',
+                    'Add Course, EducationalOrganization, FAQPage, and Review schema where applicable.',
+                    'Expose pricing, prerequisites, certificate status, and delivery format.',
+                    'Use structured modules, lesson lists, and learner-fit FAQs.',
+                ],
+                'category_focus': {
+                    'structured_data': 'Use Course, EducationalOrganization, FAQPage, and Review markup.',
+                    'authority': 'Show instructor/provider credibility and learner proof.',
+                    'answerability': 'Answer learner-fit, prerequisite, duration, and outcome questions.',
+                },
+            },
+            'documentation': {
+                'title': 'Improve task extraction',
+                'actions': [
+                    'Expose prerequisites, steps, parameters, examples, errors, versions, and related docs.',
+                    'Use HowTo, TechArticle, FAQPage, and BreadcrumbList schema where appropriate.',
+                    'Make headings task-oriented and link directly to subtopics.',
+                    'Add exact code examples, expected outputs, and troubleshooting notes.',
+                ],
+                'category_focus': {
+                    'answerability': 'Answer setup, usage, and troubleshooting questions directly.',
+                    'technical': 'Make docs crawlable, linkable, and stable across versions.',
+                    'citationability': 'Prioritize exact examples and parameters over external citations.',
+                },
+            },
+            'general': {
+                'title': 'Improve extraction readiness',
+                'actions': [
+                    'Make the entity, offering, audience, trust signals, and next step explicit.',
+                    'Use Organization, WebSite, BreadcrumbList, and FAQPage schema where relevant.',
+                    'Add structured summaries, clear headings, and visible contact or proof signals.',
+                ],
+                'category_focus': {},
+            },
+        }
     
     def _initialize_category_tips(self) -> Dict[str, Dict]:
         """Initialize detailed tips for each category and sub-category"""
@@ -544,6 +647,72 @@ class RecommendationGenerator:
         recommendations.sort(key=lambda x: x['priority'], reverse=True)
         
         return recommendations[:top_n]
+
+    def generate_extraction_recommendations(self, result: Dict[str, Any], top_n: int = 8) -> List[Dict]:
+        """Generate profile-aware recommendations focused on information extraction."""
+        audit_profile = result.get('audit_profile') or {}
+        profile_type = audit_profile.get('type', 'general')
+        profile_config = self.profile_actions.get(profile_type, self.profile_actions['general'])
+        breakdown = result.get('breakdown', {})
+        recommendations = []
+
+        # Start with profile-specific universal actions.
+        for i, action in enumerate(profile_config.get('actions', [])[:3]):
+            recommendations.append({
+                'category': 'extraction_goals',
+                'title': profile_config.get('title', 'Improve extraction readiness'),
+                'priority': 100 - i,
+                'impact': 'high',
+                'applicability': 'high',
+                'tips': [action],
+                'reason': audit_profile.get('description', ''),
+            })
+
+        category_focus = profile_config.get('category_focus', {})
+        applicable_categories = [
+            (category, data)
+            for category, data in breakdown.items()
+            if data.get('applicability') != 'low' and data.get('percentage', 0) < 80
+        ]
+        applicable_categories.sort(
+            key=lambda item: (
+                0 if item[1].get('applicability') == 'critical' else 1,
+                item[1].get('percentage', 0),
+            )
+        )
+
+        for category, data in applicable_categories:
+            pct = data.get('percentage', 0)
+            recommendation = category_focus.get(category)
+            if not recommendation:
+                recommendation = (
+                    f"Improve {category.replace('_', ' ')} because it is {data.get('applicability', 'medium')} "
+                    "for this audit profile."
+                )
+
+            recommendations.append({
+                'category': category,
+                'title': f"Improve {category.replace('_', ' ').title()}",
+                'current_score': data.get('score', 0),
+                'max_score': data.get('max', 0),
+                'percentage': pct,
+                'priority': 95 - pct,
+                'impact': 'high' if data.get('applicability') in ['critical', 'high'] else 'medium',
+                'applicability': data.get('applicability', 'medium'),
+                'reason': data.get('applicability_reason', ''),
+                'tips': [recommendation],
+            })
+
+        seen = set()
+        unique = []
+        for rec in sorted(recommendations, key=lambda x: x.get('priority', 0), reverse=True):
+            key = (rec.get('category'), rec.get('tips', [''])[0])
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(rec)
+
+        return unique[:top_n]
     
     def get_category_overview(self, category: str) -> Dict:
         """Get overview and description for a category"""
@@ -554,4 +723,3 @@ class RecommendationGenerator:
                 'description': info['description']
             }
         return {'title': category, 'description': 'No description available'}
-

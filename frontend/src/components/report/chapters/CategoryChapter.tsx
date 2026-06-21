@@ -31,6 +31,17 @@ export function CategoryChapter({ category, data, chapterIndex }: CategoryChapte
         {getCategoryDescription(category)}
       </p>
 
+      {data.applicability && (
+        <div className="mb-6 p-3 rounded-lg bg-indigo-50/70 border border-indigo-100">
+          <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-1">
+            {data.applicability} applicability
+          </p>
+          <p className="text-sm text-stone-700 leading-relaxed">
+            {data.applicability_reason}
+          </p>
+        </div>
+      )}
+
       <div className="flex items-end justify-between mb-2">
         <span className={`text-4xl font-bold tabular-nums ${getCategoryColor(pct)}`}>
           {data.score}

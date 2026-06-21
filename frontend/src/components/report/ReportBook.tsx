@@ -9,10 +9,12 @@ import { SummaryChapter } from './chapters/SummaryChapter';
 import { CategoryChapter } from './chapters/CategoryChapter';
 import { GeoChapter } from './chapters/GeoChapter';
 import { ActionsChapter } from './chapters/ActionsChapter';
+import { PromptGapChapter } from './chapters/PromptGapChapter';
+import { PositioningChapter } from './chapters/PositioningChapter';
 import { AuditReportResult, isDomainResult } from '@/types/audit';
 import { formatCategoryName } from '@/lib/report-utils';
 
-type ChapterType = 'cover' | 'summary' | 'category' | 'geo' | 'actions';
+type ChapterType = 'cover' | 'summary' | 'positioning' | 'prompts' | 'category' | 'geo' | 'actions';
 
 interface ChapterDef {
   id: string;
@@ -36,6 +38,13 @@ function buildChapters(result: AuditReportResult): ChapterDef[] {
     { id: 'cover', type: 'cover', label: 'Cover' },
     { id: 'summary', type: 'summary', label: 'Summary' },
   ];
+
+  if (result.prompt_analysis?.prompts?.length) {
+    if (result.positioning_analysis) {
+      chapters.push({ id: 'positioning', type: 'positioning', label: 'USP' });
+    }
+    chapters.push({ id: 'prompts', type: 'prompts', label: 'Prompts' });
+  }
 
   Object.keys(result.breakdown).forEach((category, i) => {
     chapters.push({
@@ -143,6 +152,10 @@ export function ReportBook({
               );
             } else if (chapter.type === 'summary') {
               content = <SummaryChapter result={result} />;
+            } else if (chapter.type === 'positioning' && result.positioning_analysis) {
+              content = <PositioningChapter analysis={result.positioning_analysis} />;
+            } else if (chapter.type === 'prompts' && result.prompt_analysis) {
+              content = <PromptGapChapter analysis={result.prompt_analysis} />;
             } else if (chapter.type === 'category' && chapter.category) {
               content = (
                 <CategoryChapter

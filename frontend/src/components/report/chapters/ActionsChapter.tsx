@@ -33,8 +33,9 @@ export function ActionsChapter({ result }: ActionsChapterProps) {
     isDomainResult(result) && result.geo_score
       ? result.geo_score.recommended_actions
       : [];
+  const extractionRecommendations = result.recommendations ?? [];
 
-  const hasActions = weakCategories.length > 0 || geoActions.length > 0;
+  const hasActions = extractionRecommendations.length > 0 || weakCategories.length > 0 || geoActions.length > 0;
 
   return (
     <div>
@@ -72,7 +73,42 @@ export function ActionsChapter({ result }: ActionsChapterProps) {
         </section>
       )}
 
-      {weakCategories.length > 0 && (
+      {extractionRecommendations.length > 0 && (
+        <section className="mb-8">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-3">
+            Extraction Priorities
+          </h3>
+          <div className="space-y-4">
+            {extractionRecommendations.map((recommendation, i) => (
+              <div
+                key={`${recommendation.category}-${i}`}
+                className="p-4 rounded-lg bg-indigo-50/70 border border-indigo-100"
+              >
+                <div className="flex justify-between gap-3 mb-1">
+                  <h4 className="font-semibold text-stone-800">{recommendation.title}</h4>
+                  {recommendation.applicability && (
+                    <span className="text-xs font-bold uppercase text-indigo-700">
+                      {recommendation.applicability}
+                    </span>
+                  )}
+                </div>
+                {recommendation.reason && (
+                  <p className="text-xs text-stone-500 mb-2">{recommendation.reason}</p>
+                )}
+                <ul className="space-y-1">
+                  {recommendation.tips.map((tip) => (
+                    <li key={tip} className="text-sm text-stone-700 leading-relaxed">
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {extractionRecommendations.length === 0 && weakCategories.length > 0 && (
         <section>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500 mb-3">
             AEO Improvement Areas

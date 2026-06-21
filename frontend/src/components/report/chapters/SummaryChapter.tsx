@@ -73,6 +73,12 @@ export function SummaryChapter({ result }: SummaryChapterProps) {
     );
   }
 
+  if (result.audit_profile) {
+    insights.push(
+      `Audit profile: ${result.audit_profile.label} focuses on ${result.audit_profile.extraction_goals.slice(0, 4).join(', ')}.`
+    );
+  }
+
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600 mb-2">
@@ -99,6 +105,24 @@ export function SummaryChapter({ result }: SummaryChapterProps) {
           <CategorySnapshot key={category} category={category} data={data} />
         ))}
       </div>
+
+      {result.extraction_goals && result.extraction_goals.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-stone-500 mb-3">
+            Extraction Goals
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {result.extraction_goals.slice(0, 10).map((goal) => (
+              <span
+                key={goal}
+                className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-medium"
+              >
+                {goal.replace(/_/g, ' ')}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isDomainResult(result) && result.best_page && result.worst_page && (
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
