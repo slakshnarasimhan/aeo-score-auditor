@@ -12,7 +12,7 @@ import json
 class ProgressUpdate:
     """Progress update data"""
     job_id: str
-    status: str  # discovering, auditing, completed, failed
+    status: str  # intelligence, discovering, auditing, strategy, external, finalizing, completed, failed
     current_step: str
     total_urls: int
     urls_discovered: int
@@ -49,12 +49,12 @@ class ProgressTracker:
         self._progress[job_id] = ProgressUpdate(
             job_id=job_id,
             status="discovering",
-            current_step="Discovering URLs...",
+            current_step="Initializing domain audit...",
             total_urls=total_urls,
             urls_discovered=0,
             pages_audited=0,
             percentage=0.0,
-            message="Starting domain audit",
+            message="Preparing domain audit",
             timestamp=datetime.utcnow().isoformat()
         )
         self._listeners[job_id] = []
@@ -76,11 +76,19 @@ class ProgressTracker:
         progress.timestamp = datetime.utcnow().isoformat()
         
         # Calculate percentage
-        if progress.total_urls > 0:
+        if progress.status == "intelligence":
+            progress.percentage = 3.0
+        elif progress.status == "strategy":
+            progress.percentage = 95.0
+        elif progress.status == "external":
+            progress.percentage = 97.0
+        elif progress.status == "finalizing":
+            progress.percentage = 99.0
+        elif progress.total_urls > 0:
             if progress.status == "discovering":
                 progress.percentage = min(10, (progress.urls_discovered / max(progress.total_urls, 1)) * 10)
             elif progress.status == "auditing":
-                progress.percentage = 10 + ((progress.pages_audited / progress.total_urls) * 90)
+                progress.percentage = 10 + ((progress.pages_audited / progress.total_urls) * 80)
             elif progress.status == "completed":
                 progress.percentage = 100.0
         
@@ -152,4 +160,3 @@ class ProgressTracker:
 
 # Global progress tracker instance
 progress_tracker = ProgressTracker()
-

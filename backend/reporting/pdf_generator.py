@@ -212,6 +212,8 @@ class PDFReportGenerator:
             chapters.append({"type": "positioning"})
         if audit_result.get("prompt_analysis", {}).get("prompts"):
             chapters.append({"type": "prompts"})
+        if audit_result.get("external_aeo_analysis", {}).get("enabled"):
+            chapters.append({"type": "external_aeo"})
         for category in audit_result.get("breakdown", {}):
             chapters.append({"type": "category", "category": category})
         if audit_type == "domain" and audit_result.get("geo_score"):
@@ -283,11 +285,15 @@ class PDFReportGenerator:
             self._add_positioning(story, audit_result)
         elif ctype == "prompts":
             self._add_prompt_gaps(story, audit_result)
+        elif ctype == "external_aeo":
+            self._add_external_aeo(story, audit_result)
         elif ctype == "category":
             extra_offset = 0
             if audit_result.get("positioning_analysis"):
                 extra_offset += 1
             if audit_result.get("prompt_analysis", {}).get("prompts"):
+                extra_offset += 1
+            if audit_result.get("external_aeo_analysis", {}).get("enabled"):
                 extra_offset += 1
             self._add_category(story, chapter["category"], audit_result, detailed, chapter_index - 2 - extra_offset)
         elif ctype == "geo":
@@ -511,13 +517,45 @@ class PDFReportGenerator:
         summary = analysis.get("summary", {})
         counts = summary.get("coverage_counts", {})
         prompts = analysis.get("prompts", [])
-        priority = [p for p in prompts if p.get("coverage") != "strong"][:8] or prompts[:8]
+        stage_order = [
+            "problem_recognition",
+            "solution_discovery",
+            "use_case_fit",
+            "provider_comparison",
+            "branded_validation",
+            "implementation",
+        ]
+        stage_labels = {
+            "problem_recognition": "Problem Recognition",
+            "solution_discovery": "Solution Discovery",
+            "use_case_fit": "Use-Case Fit",
+            "provider_comparison": "Provider Comparison",
+            "branded_validation": "Branded Validation",
+            "implementation": "Implementation & Procurement",
+        }
+        brand_l = str(analysis.get("brand", "")).lower()
+
+        def prompt_stage(prompt: Dict[str, Any]) -> str:
+            if prompt.get("journey_stage"):
+                return prompt["journey_stage"]
+            intent = prompt.get("intent", "")
+            is_branded = bool(brand_l and brand_l in str(prompt.get("prompt", "")).lower())
+            if is_branded:
+                return "implementation" if intent in {"transactional", "support"} else "branded_validation"
+            if intent == "comparison":
+                return "provider_comparison"
+            if intent == "feature":
+                return "use_case_fit"
+            if intent in {"transactional", "support"}:
+                return "implementation"
+            return "solution_discovery"
 
         story.append(Paragraph("PROMPT PORTFOLIO", self.styles["ChapterKicker"]))
-        story.append(Paragraph("Local Answerability Gaps", self.styles["ChapterTitle"]))
+        story.append(Paragraph("Demand-to-Answer Opportunities", self.styles["ChapterTitle"]))
         story.append(Paragraph(
-            f"Simulated against crawled site content for {analysis.get('brand', 'this site')}. "
-            "These prompts show whether local evidence exists for likely AI-answer questions.",
+            f"Questions move from unbranded demand to evaluating {analysis.get('brand', 'this site')}. "
+            "Eligibility measures whether an answer engine can infer relevance; completeness "
+            "measures whether the website can support a useful response.",
             self.styles["ChapterSubtitle"],
         ))
 
@@ -529,7 +567,7 @@ class PDFReportGenerator:
                 f"{llm_meta.get('model', '')} across {llm_meta.get('evaluated_prompts', 0)} prompts."
             )
         else:
-            mode_text = f"Deterministic local retrieval mode. {llm_meta.get('reason', '')}"
+            mode_text = f"Deterministic website retrieval mode. {llm_meta.get('reason', '')}"
         story.append(Paragraph(
             mode_text,
             ParagraphStyle(name="PromptMode", parent=self.styles["BodyText"], fontSize=8, textColor=STONE_600),
@@ -537,7 +575,10 @@ class PDFReportGenerator:
         story.append(Spacer(1, 0.08 * inch))
 
         story.append(Paragraph(
-            f'<b>Coverage score:</b> {summary.get("coverage_score", 0)}% &nbsp;&nbsp; '
+            f'<b>AEO eligibility:</b> {summary.get("eligibility_score", summary.get("coverage_score", 0))}%'
+            f' &nbsp;&nbsp; <b>Answer completeness:</b> '
+            f'{summary.get("answer_completeness_score", summary.get("coverage_score", 0))}%'
+            f' &nbsp;&nbsp; '
             f'<font color="#10b981">Strong: {counts.get("strong", 0)}</font> &nbsp; '
             f'<font color="#f59e0b">Partial: {counts.get("partial", 0)}</font> &nbsp; '
             f'<font color="#f97316">Weak: {counts.get("weak", 0)}</font> &nbsp; '
@@ -546,28 +587,118 @@ class PDFReportGenerator:
         ))
         story.append(Spacer(1, 0.15 * inch))
 
-        rows = [["Prompt", "Coverage", "Fix"]]
-        for prompt in priority:
+        for stage in stage_order:
+            stage_prompts = [
+                prompt for prompt in prompts
+                if prompt_stage(prompt) == stage
+            ]
+            if not stage_prompts:
+                continue
+            story.append(Paragraph(
+                stage_labels[stage].upper(),
+                self.styles["SectionLabel"],
+            ))
+            rows = [["Question", "Eligibility", "Complete", "Gap"]]
+            for prompt in stage_prompts:
+                rows.append([
+                    Paragraph(
+                        prompt.get("prompt", ""),
+                        ParagraphStyle(
+                            name=f"PromptCell-{stage}",
+                            parent=self.styles["BodyText"],
+                            fontSize=7.5,
+                        ),
+                    ),
+                    str(prompt.get("eligibility_score", prompt.get("answerability_score", 0))),
+                    str(prompt.get("answer_completeness_score", prompt.get("answerability_score", 0))),
+                    Paragraph(
+                        prompt.get("recommended_fix", ""),
+                        ParagraphStyle(
+                            name=f"FixCell-{stage}",
+                            parent=self.styles["BodyText"],
+                            fontSize=7,
+                        ),
+                    ),
+                ])
+
+            t = Table(rows, colWidths=[2.6 * inch, 0.65 * inch, 0.65 * inch, 2.4 * inch], repeatRows=1)
+            t.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), HexColor("#eef2ff")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), INDIGO),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (1, 1), (2, -1), "CENTER"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+                ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]))
+            story.append(t)
+            story.append(Spacer(1, 0.12 * inch))
+
+    def _add_external_aeo(self, story: List[Any], audit_result: Dict[str, Any]):
+        analysis = audit_result.get("external_aeo_analysis", {})
+        summary = analysis.get("summary", {})
+
+        story.append(Paragraph("EXTERNAL AEO VALIDATION", self.styles["ChapterKicker"]))
+        story.append(Paragraph("Collective Answer-Engine Visibility", self.styles["ChapterTitle"]))
+        story.append(Paragraph(
+            "The generated questions were asked to configured external answer engines and "
+            "compared with the local website-readiness estimate.",
+            self.styles["ChapterSubtitle"],
+        ))
+
+        if not analysis.get("available", False):
+            story.append(Paragraph(
+                analysis.get("reason", "External validation was enabled, but no provider was available."),
+                ParagraphStyle(name="ExternalUnavailable", parent=self.styles["BodyText"], textColor=STONE_600),
+            ))
+            return
+
+        story.append(Paragraph(
+            f'<b>Visibility:</b> {summary.get("external_visibility_score", 0)}% &nbsp;&nbsp; '
+            f'<b>Brand presence:</b> {summary.get("brand_presence_rate", 0)}% &nbsp;&nbsp; '
+            f'<b>Official citations:</b> {summary.get("official_citation_rate", 0)}% &nbsp;&nbsp; '
+            f'<b>Ollama match:</b> {summary.get("internal_external_alignment_score", 0)}%',
+            self.styles["BodyText"],
+        ))
+        story.append(Paragraph(
+            f'{summary.get("questions_tested", 0)} questions tested across '
+            f'{summary.get("providers_tested", 0)} providers.',
+            ParagraphStyle(name="ExternalMeta", parent=self.styles["BodyText"], fontSize=8, textColor=STONE_600),
+        ))
+        story.append(Spacer(1, 0.14 * inch))
+
+        rows = [["Question", "External", "Brand", "Official", "Match"]]
+        for question in analysis.get("questions", [])[:18]:
             rows.append([
-                Paragraph(prompt.get("prompt", ""), ParagraphStyle(name="PromptCell", parent=self.styles["BodyText"], fontSize=8)),
                 Paragraph(
-                    f'<b>{prompt.get("coverage", "").title()}</b><br/>{prompt.get("answerability_score", 0)}/100',
-                    ParagraphStyle(name="CoverageCell", parent=self.styles["BodyText"], fontSize=8),
+                    question.get("prompt", ""),
+                    ParagraphStyle(
+                        name="ExternalQuestionCell",
+                        parent=self.styles["BodyText"],
+                        fontSize=7.5,
+                    ),
                 ),
-                Paragraph(prompt.get("recommended_fix", ""), ParagraphStyle(name="FixCell", parent=self.styles["BodyText"], fontSize=8)),
+                str(question.get("external_visibility_score", 0)),
+                f'{question.get("brand_presence_rate", 0)}%',
+                f'{question.get("official_citation_rate", 0)}%',
+                str(question.get("internal_external_alignment_score", 0)),
             ])
 
-        t = Table(rows, colWidths=[2.45 * inch, 0.9 * inch, 2.95 * inch])
+        t = Table(rows, colWidths=[3.3 * inch, 0.7 * inch, 0.7 * inch, 0.75 * inch, 0.65 * inch], repeatRows=1)
         t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), HexColor("#eef2ff")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), INDIGO),
+            ("BACKGROUND", (0, 0), (-1, 0), HexColor("#ecfdf5")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), EMERALD),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
             ("BOX", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
             ("INNERGRID", (0, 0), (-1, -1), 0.5, HexColor("#e7e5e4")),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]))
         story.append(t)
 

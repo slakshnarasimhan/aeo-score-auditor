@@ -9,6 +9,8 @@ import logging
 import os
 from typing import Any, Dict, List
 
+from reporting.llm_client import JSONLLMClient
+
 try:
     from loguru import logger
 except Exception:
@@ -29,47 +31,99 @@ class LLMPromptEvaluator:
     """Use an LLM to judge prompt coverage from local site evidence."""
 
     def __init__(self, model: str | None = None):
-        self.model = model or settings.PROMPT_EVAL_MODEL
-        self.available = bool(settings.OPENAI_API_KEY)
-        self.client = None
-
-        if not self.available:
-            return
-
-        try:
-            from openai import OpenAI
-
-            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        except Exception as e:
-            logger.warning(f"LLM prompt evaluator unavailable: {e}")
-            self.available = False
+        selected_model = model or settings.PROMPT_EVAL_MODEL
+        self.llm = JSONLLMClient(
+            selected_model,
+            settings.PROMPT_EVAL_MODEL,
+            os.getenv("OLLAMA_DOMAIN_MODEL", "gpt-oss:20b"),
+        )
+        self.model = self.llm.model
+        self.provider = self.llm.provider
+        self.available = self.llm.available
 
     def evaluate_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
-        if not self.available or not self.client:
+        if not self.available:
             return {
                 "enabled": False,
-                "provider": "openai",
+                "provider": self.provider,
                 "model": self.model,
-                "reason": "OPENAI_API_KEY or OpenAI client is not available",
+                "reason": f"{self.provider} model provider is not available",
                 "results": results,
             }
 
-        evaluated: List[Dict[str, Any]] = []
         max_prompts = max(1, settings.PROMPT_EVAL_MAX_PROMPTS)
+        evaluated = list(results)
+        batch_indexes = [
+            index for index, result in enumerate(results[:max_prompts])
+            if result.get("evidence")
+        ]
+        for index, result in enumerate(results[:max_prompts]):
+            if not result.get("evidence"):
+                result["llm_evaluation"] = self._missing_eval(
+                    "No local evidence was retrieved."
+                )
+                evaluated[index] = self._apply_llm_eval(result)
 
-        for i, result in enumerate(results):
-            if i >= max_prompts:
-                evaluated.append(result)
-                continue
-            evaluated.append(self.evaluate_prompt(result))
+        if batch_indexes:
+            try:
+                payload = self._call_batch([
+                    results[index] for index in batch_indexes
+                ])
+                response_items = payload.get("evaluations", [])
+                by_id = {
+                    int(item.get("id")): item
+                    for item in response_items
+                    if isinstance(item, dict) and str(item.get("id", "")).isdigit()
+                }
+                for batch_id, result_index in enumerate(batch_indexes):
+                    result = results[result_index]
+                    item = by_id.get(batch_id)
+                    if item:
+                        result["llm_evaluation"] = self._normalize_eval(item)
+                        evaluated[result_index] = self._apply_llm_eval(result)
+            except Exception as e:
+                logger.warning(f"Batched LLM prompt evaluation failed: {e}")
 
         return {
             "enabled": True,
-            "provider": "openai",
+            "provider": self.provider,
             "model": self.model,
             "evaluated_prompts": min(len(results), max_prompts),
             "results": evaluated,
         }
+
+    def _call_batch(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        items = []
+        for index, result in enumerate(results):
+            evidence = [
+                {
+                    "number": evidence_index + 1,
+                    "url": item.get("url", ""),
+                    "type": item.get("type", ""),
+                    "text": item.get("text", ""),
+                }
+                for evidence_index, item in enumerate(result.get("evidence", [])[:5])
+            ]
+            items.append({
+                "id": index,
+                "prompt": result.get("prompt", ""),
+                "intent": result.get("intent", ""),
+                "evidence": evidence,
+            })
+
+        return self.llm.generate_json(
+            (
+                "You are a strict answerability evaluator. Evaluate every item "
+                "independently using only its supplied website evidence."
+            ),
+            (
+                f"Items:\n{json.dumps(items, default=str)}\n\n"
+                "Return JSON with an evaluations array. Each evaluation must contain "
+                "id, coverage (strong|partial|weak|missing), answerability_score "
+                "(0-100), answer, reasoning, gaps, recommended_fix, and evidence_used."
+            ),
+            temperature=0,
+        )
 
     def evaluate_prompt(self, result: Dict[str, Any]) -> Dict[str, Any]:
         evidence = result.get("evidence", [])
@@ -112,34 +166,21 @@ Judge whether the evidence from this website can answer the user prompt.
 Use only the evidence above. Do not use outside knowledge.
 """
 
-        response = self.client.chat.completions.create(
-            model=self.model,
+        return self.llm.generate_json(
+            (
+                "You are a strict answerability evaluator for website audits. "
+                "Return only JSON. If the evidence is vague, generic, or does "
+                "not directly answer the prompt, lower the coverage."
+            ),
+            (
+                user_prompt
+                + "\nReturn JSON with keys: coverage "
+                "(strong|partial|weak|missing), answerability_score (0-100), "
+                "answer (string), reasoning (string), gaps (array of strings), "
+                "recommended_fix (string), evidence_used (array of evidence numbers)."
+            ),
             temperature=0,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a strict answerability evaluator for website audits. "
-                        "Return only JSON. If the evidence is vague, generic, or does "
-                        "not directly answer the prompt, lower the coverage."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        user_prompt
-                        + "\nReturn JSON with keys: coverage "
-                        "(strong|partial|weak|missing), answerability_score (0-100), "
-                        "answer (string), reasoning (string), gaps (array of strings), "
-                        "recommended_fix (string), evidence_used (array of evidence numbers)."
-                    ),
-                },
-            ],
         )
-
-        content = response.choices[0].message.content or "{}"
-        return json.loads(content)
 
     def _normalize_eval(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         coverage = str(payload.get("coverage", "missing")).lower()

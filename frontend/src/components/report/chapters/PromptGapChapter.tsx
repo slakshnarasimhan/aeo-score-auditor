@@ -13,9 +13,43 @@ const coverageStyles: Record<string, string> = {
   missing: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
+const stageOrder = [
+  'problem_recognition',
+  'solution_discovery',
+  'use_case_fit',
+  'provider_comparison',
+  'branded_validation',
+  'implementation',
+];
+
+const stageDescriptions: Record<string, string> = {
+  problem_recognition: 'The user describes a problem without knowing the category or brand.',
+  solution_discovery: 'The user searches for a type of solution or provider.',
+  use_case_fit: 'The user tests whether the solution can handle a concrete need.',
+  provider_comparison: 'The user compares providers, approaches, or buying options.',
+  branded_validation: 'The user already knows the brand and validates fit and proof.',
+  implementation: 'The user asks about adoption, integration, support, or procurement.',
+};
+
+function inferStage(prompt: PromptGapResult, brand: string) {
+  if (prompt.journey_stage) return prompt.journey_stage;
+  const isBranded = prompt.prompt.toLowerCase().includes(brand.toLowerCase());
+  if (isBranded) {
+    return ['transactional', 'support'].includes(prompt.intent)
+      ? 'implementation'
+      : 'branded_validation';
+  }
+  if (prompt.intent === 'comparison') return 'provider_comparison';
+  if (prompt.intent === 'feature') return 'use_case_fit';
+  if (['transactional', 'support'].includes(prompt.intent)) return 'implementation';
+  return 'solution_discovery';
+}
+
 function PromptRow({ prompt }: { prompt: PromptGapResult }) {
   const style = coverageStyles[prompt.coverage] ?? coverageStyles.missing;
   const evidence = prompt.evidence[0];
+  const eligibility = prompt.eligibility_score ?? prompt.answerability_score;
+  const completeness = prompt.answer_completeness_score ?? prompt.answerability_score;
 
   return (
     <div className="py-4 border-b border-stone-100 last:border-b-0">
@@ -25,15 +59,18 @@ function PromptRow({ prompt }: { prompt: PromptGapResult }) {
             {prompt.prompt}
           </p>
           <p className="mt-1 text-xs uppercase tracking-wider text-stone-400">
-            {prompt.intent}
+            {prompt.audience_scope ?? 'unbranded'} · {prompt.intent}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+          <span className="rounded border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">
+            Eligibility {eligibility}
+          </span>
+          <span className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-800">
+            Complete {completeness}
+          </span>
           <span className={`rounded-full border px-2.5 py-1 text-xs font-bold capitalize ${style}`}>
             {prompt.coverage}
-          </span>
-          <span className="text-sm font-bold tabular-nums text-stone-700">
-            {prompt.answerability_score}
           </span>
         </div>
       </div>
@@ -49,7 +86,7 @@ function PromptRow({ prompt }: { prompt: PromptGapResult }) {
       {evidence && (
         <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-            Best local evidence
+            Best website evidence
           </p>
           <p className="mt-1 text-xs text-stone-700 leading-relaxed">
             {evidence.text}
@@ -64,11 +101,17 @@ function PromptRow({ prompt }: { prompt: PromptGapResult }) {
 }
 
 export function PromptGapChapter({ analysis }: PromptGapChapterProps) {
-  const prompts = [...analysis.prompts].sort(
-    (a, b) => a.answerability_score - b.answerability_score
-  );
-  const priorityPrompts = prompts.filter((p) => p.coverage !== 'strong').slice(0, 8);
-  const visiblePrompts = priorityPrompts.length > 0 ? priorityPrompts : prompts.slice(0, 8);
+  const prompts = [...analysis.prompts].sort((a, b) => {
+    const aStage = a.stage_rank ?? stageOrder.indexOf(inferStage(a, analysis.brand));
+    const bStage = b.stage_rank ?? stageOrder.indexOf(inferStage(b, analysis.brand));
+    return aStage - bStage || (a.question_rank ?? 99) - (b.question_rank ?? 99);
+  });
+  const groupedPrompts = stageOrder
+    .map((stage) => ({
+      stage,
+      prompts: prompts.filter((prompt) => inferStage(prompt, analysis.brand) === stage),
+    }))
+    .filter((group) => group.prompts.length > 0);
   const counts = analysis.summary.coverage_counts;
 
   return (
@@ -77,11 +120,12 @@ export function PromptGapChapter({ analysis }: PromptGapChapterProps) {
         Prompt Portfolio
       </p>
       <h2 className="font-display text-2xl md:text-3xl font-bold text-stone-900 mb-3">
-        Local Answerability Gaps
+        Demand-to-Answer Opportunities
       </h2>
       <p className="text-sm text-stone-600 leading-relaxed mb-6">
-        Simulated against crawled site content for {analysis.brand}. These prompts show
-        whether the site has local evidence an AI answer engine could cite.
+        These questions model how users move from an unbranded problem to evaluating and
+        adopting {analysis.brand}. Eligibility measures whether an answer engine can infer
+        the brand is relevant; completeness measures whether the website can support a useful answer.
       </p>
       <div className="mb-6 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-600">
         {analysis.evaluation_mode === 'llm' ? (
@@ -95,30 +139,53 @@ export function PromptGapChapter({ analysis }: PromptGapChapterProps) {
           </span>
         ) : (
           <span>
-            Deterministic local retrieval mode
+            Deterministic website retrieval mode
             {analysis.llm_evaluation?.reason ? `: ${analysis.llm_evaluation.reason}` : '.'}
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-        <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3">
-          <p className="text-xs text-indigo-700 font-semibold">Coverage</p>
-          <p className="text-2xl font-bold text-indigo-800 tabular-nums">
-            {analysis.summary.coverage_score}%
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+        <div className="rounded-lg border border-sky-100 bg-sky-50 p-3">
+          <p className="text-xs text-sky-700 font-semibold">AEO Eligibility</p>
+          <p className="text-2xl font-bold text-sky-800 tabular-nums">
+            {analysis.summary.eligibility_score ?? analysis.summary.coverage_score}%
           </p>
         </div>
-        {(['strong', 'partial', 'weak', 'missing'] as const).map((key) => (
-          <div key={key} className={`rounded-lg border p-3 ${coverageStyles[key]}`}>
-            <p className="text-xs font-semibold capitalize">{key}</p>
-            <p className="text-2xl font-bold tabular-nums">{counts[key] ?? 0}</p>
-          </div>
-        ))}
+        <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+          <p className="text-xs text-indigo-700 font-semibold">Answer Completeness</p>
+          <p className="text-2xl font-bold text-indigo-800 tabular-nums">
+            {analysis.summary.answer_completeness_score ?? analysis.summary.coverage_score}%
+          </p>
+        </div>
+        <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+          <p className="text-xs text-stone-600 font-semibold">Coverage Gaps</p>
+          <p className="text-2xl font-bold text-stone-800 tabular-nums">
+            {(counts.partial ?? 0) + (counts.weak ?? 0) + (counts.missing ?? 0)}
+          </p>
+        </div>
       </div>
 
-      <div className="rounded-lg border border-stone-200 bg-white px-4">
-        {visiblePrompts.map((prompt) => (
-          <PromptRow key={prompt.prompt} prompt={prompt} />
+      <div className="space-y-6">
+        {groupedPrompts.map(({ stage, prompts: stagePrompts }) => (
+          <section key={stage}>
+            <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h3 className="text-base font-bold text-stone-900">
+                  {stagePrompts[0]?.journey_label ?? stage.replaceAll('_', ' ')}
+                </h3>
+                <p className="text-xs text-stone-500">{stageDescriptions[stage]}</p>
+              </div>
+              <span className="text-xs font-semibold text-stone-400">
+                {stagePrompts.length} questions
+              </span>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-white px-4">
+              {stagePrompts.map((prompt) => (
+                <PromptRow key={prompt.prompt} prompt={prompt} />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </div>

@@ -45,7 +45,7 @@ function CategorySnapshot({
 }
 
 export function SummaryChapter({ result }: SummaryChapterProps) {
-  const categories = Object.entries(result.breakdown);
+  const categories = Object.entries(result.breakdown || {});
   const sorted = [...categories].sort(
     (a, b) => (b[1].percentage ?? 0) - (a[1].percentage ?? 0)
   );

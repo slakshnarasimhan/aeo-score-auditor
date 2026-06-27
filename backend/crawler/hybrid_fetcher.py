@@ -120,7 +120,10 @@ class HybridFetcher:
                 )
                 return playwright_result
             else:
-                logger.info("HTTP quality was acceptable after all")
+                logger.info(
+                    "Playwright did not improve the HTTP response; "
+                    f"returning the original result ({quality['score']}/100)"
+                )
                 return http_result
         
         logger.success(f"HTTP fetch successful, quality: {quality['score']}/100")
@@ -162,9 +165,20 @@ class HybridFetcher:
         
         if page_data.error:
             return {'score': 0, 'reasons': ['fetch_error']}
+        if page_data.status_code >= 400:
+            return {
+                'score': 0,
+                'reasons': [f'http_{page_data.status_code}'],
+            }
         
         html = page_data.html
         html_lower = html.lower()
+        if "access denied" in html_lower and (
+            "edgesuite" in html_lower
+            or "akamai" in html_lower
+            or "cloudflare" in html_lower
+        ):
+            return {'score': 0, 'reasons': ['bot_protection']}
         
         # Check 1: Minimum content length
         if len(html) < 1000:
@@ -262,4 +276,3 @@ if __name__ == "__main__":
                 print(f"❌ Error: {e}")
     
     asyncio.run(test_sites())
-

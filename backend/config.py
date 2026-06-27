@@ -1,8 +1,17 @@
 """
 Configuration management for AEO Score Auditor
 """
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+
+BACKEND_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BACKEND_DIR.parent
+ENV_FILES = (
+    str(REPO_ROOT / ".env"),
+    str(BACKEND_DIR / ".env"),
+)
 
 
 class Settings(BaseSettings):
@@ -48,6 +57,7 @@ class Settings(BaseSettings):
     AI_CITATION_CACHE_TTL: int = 604800  # 1 week
     PROMPT_EVAL_MODEL: str = "gpt-4o-mini"
     PROMPT_EVAL_MAX_PROMPTS: int = 12
+    DOMAIN_INTELLIGENCE_MODEL: str = "gpt-4o-mini"
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
@@ -71,7 +81,7 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "noreply@aeoscore.com"
     
     class Config:
-        env_file = ".env"
+        env_file = ENV_FILES
         case_sensitive = True
 
 

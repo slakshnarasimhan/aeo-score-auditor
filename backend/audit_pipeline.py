@@ -4,11 +4,17 @@ Complete audit pipeline that orchestrates all components
 from typing import Dict, List
 from loguru import logger
 
-from crawler.orchestrator import ExtractionOrchestrator
+from crawler.orchestrator import ExtractionOrchestrator, ExtractedPageData
+from crawler.crawl_store import (
+    latest_page_artifact_path,
+    load_page_extraction,
+    persist_page_extraction,
+)
 from scoring.calculator import AEOScoreCalculator
 from reporting.recommendation_generator import RecommendationGenerator
 from reporting.prompt_gap_analyzer import PromptGapAnalyzer
 from reporting.positioning_analyzer import PositioningAnalyzer
+from reporting.site_context import load_site_context
 
 
 class AuditPipeline:
@@ -33,13 +39,35 @@ class AuditPipeline:
             Complete audit results with scores
         """
         options = options or {}
+        site_context = load_site_context(
+            url,
+            options.get('site_context')
+            or options.get('supplemental_context')
+            or options.get('site_context_path')
+            or options.get('supplemental_context_path'),
+        )
+        site_context["_answerability_model"] = (
+            options.get("domain_intelligence_model")
+            or options.get("analysis_model")
+            or "auto"
+        )
         
         logger.info(f"Starting audit pipeline for: {url}")
         
         try:
             # Step 1: Extract data
-            logger.info("Step 1/3: Extracting page data...")
-            extracted_data = await self.orchestrator.extract(url)
+            use_local_crawl = bool(
+                options.get('use_local_crawl') or options.get('local_crawl_only')
+            )
+            if use_local_crawl:
+                logger.info("Step 1/3: Loading page data from local crawl cache...")
+                extracted_payload = load_page_extraction(url)
+                extracted_data = ExtractedPageData(**extracted_payload)
+                persisted_path = latest_page_artifact_path(url)
+            else:
+                logger.info("Step 1/3: Extracting page data...")
+                extracted_data = await self.orchestrator.extract(url)
+                persisted_path = persist_page_extraction(url, extracted_data.to_dict())
             
             # Step 2: Calculate scores
             logger.info("Step 2/3: Calculating scores...")
@@ -68,6 +96,8 @@ class AuditPipeline:
                     'has_dates': bool(extracted_data.dates.get('published'))
                 },
                 'prompt_evidence': self._build_prompt_evidence(extracted_data),
+                'crawl_artifact_path': persisted_path,
+                'crawl_source': 'local' if use_local_crawl else 'network',
             }
             
             # Include content classification if available
@@ -78,6 +108,7 @@ class AuditPipeline:
                 [result],
                 url,
                 scores.get('audit_profile'),
+                site_context,
             )
             result['prompt_analysis'] = self.prompt_gap_analyzer.analyze(
                 [result],
@@ -86,7 +117,15 @@ class AuditPipeline:
                 max_prompts=16,
                 use_llm=bool(options.get('llm_prompt_eval')),
                 positioning=result['positioning_analysis'],
+                site_context=site_context,
             )
+            if options.get('external_aeo_validation'):
+                from reporting.external_aeo_validator import ExternalAEOValidator
+
+                result['external_aeo_analysis'] = ExternalAEOValidator(
+                    providers=options.get('external_aeo_providers'),
+                    max_questions=options.get('external_aeo_max_questions'),
+                ).validate(result, site_context)
             
             logger.info(f"Audit complete for: {url} - Score: {scores['overall_score']}")
             return result

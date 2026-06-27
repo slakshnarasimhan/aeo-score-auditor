@@ -16,24 +16,51 @@ STOP_WORDS = {
     "when", "where", "which", "who", "why", "with", "would",
 }
 
+JOURNEY_STAGES = [
+    "problem_recognition",
+    "solution_discovery",
+    "use_case_fit",
+    "provider_comparison",
+    "branded_validation",
+    "implementation",
+]
+
+JOURNEY_STAGE_LABELS = {
+    "problem_recognition": "Problem Recognition",
+    "solution_discovery": "Solution Discovery",
+    "use_case_fit": "Use-Case Fit",
+    "provider_comparison": "Provider Comparison",
+    "branded_validation": "Branded Validation",
+    "implementation": "Implementation & Procurement",
+}
+
+JOURNEY_WEIGHTS = {
+    "problem_recognition": 1.0,
+    "solution_discovery": 1.0,
+    "use_case_fit": 0.9,
+    "provider_comparison": 0.8,
+    "branded_validation": 0.6,
+    "implementation": 0.4,
+}
+
 
 PROFILE_PROMPTS: Dict[str, Dict[str, List[str]]] = {
     "ecommerce": {
         "discovery": [
             "What should I know before buying {topic}?",
-            "Which {topic} is best for my home?",
+            "Which {topic} options are best for my home?",
             "What should I look for before buying {topic}?",
         ],
         "comparison": [
             "How do different {topic} options compare?",
-            "Which {topic} offers the best value?",
+            "Which {topic} options offer the best value?",
         ],
         "feature": [
             "What product details, pricing, and availability should I check for {topic}?",
             "Can I find reviews or proof before choosing {topic}?",
         ],
         "trust": [
-            "Which {topic} brands are reliable?",
+            "Which {topic} brands or sellers are reliable?",
             "What warranty or support should I expect for {topic}?",
         ],
         "transactional": [
@@ -148,11 +175,21 @@ class PromptGapAnalyzer:
         max_prompts: int = 24,
         use_llm: bool = False,
         positioning: Dict[str, Any] | None = None,
+        site_context: Dict[str, Any] | None = None,
     ) -> Dict[str, Any]:
-        brand = self._brand_name(site_url)
-        topic = self._topic_from_pages(pages, brand)
+        site_context = site_context or {}
+        brand = str(site_context.get("brand") or self._brand_name(site_url))
+        topic = self._prompt_topic(pages, brand, site_context, positioning or {})
         profile_type = (profile or {}).get("type") or "general"
-        prompt_defs = self._generate_prompts(brand, topic, profile_type, max_prompts, pages, positioning)
+        prompt_defs = self._generate_prompts(
+            brand,
+            topic,
+            profile_type,
+            max_prompts,
+            pages,
+            positioning,
+            site_context,
+        )
         chunks = self._build_chunks(pages)
 
         results = [self._score_prompt(prompt, chunks, brand) for prompt in prompt_defs]
@@ -165,9 +202,22 @@ class PromptGapAnalyzer:
         if use_llm:
             from reporting.llm_prompt_evaluator import LLMPromptEvaluator
 
-            llm_evaluation = LLMPromptEvaluator().evaluate_results(results)
+            llm_evaluation = LLMPromptEvaluator(
+                model=site_context.get("_answerability_model")
+            ).evaluate_results(results)
             results = llm_evaluation.get("results", results)
 
+        for result in results:
+            result["answer_completeness_score"] = result.get(
+                "answerability_score",
+                result.get("answer_completeness_score", 0),
+            )
+            result["opportunity_score"] = self._opportunity_score(
+                result.get("journey_stage", "solution_discovery"),
+                result.get("eligibility_score", 0),
+                result["answer_completeness_score"],
+            )
+        results = self._rank_results(results)
         summary = self._summarize(results)
 
         return {
@@ -188,10 +238,35 @@ class PromptGapAnalyzer:
         max_prompts: int,
         pages: Sequence[Dict[str, Any]] | None = None,
         positioning: Dict[str, Any] | None = None,
+        site_context: Dict[str, Any] | None = None,
     ) -> List[Dict[str, str]]:
+        site_context = site_context or {}
         templates = PROFILE_PROMPTS.get(profile_type) or PROFILE_PROMPTS["general"]
         prompts: List[Dict[str, str]] = []
-        prompts.extend(self._positioning_prompts(positioning or {}, topic))
+        strategy_prompts = self._strategy_prompts(site_context)
+        strategy = site_context.get("question_strategy")
+        has_journey_strategy = isinstance(strategy, dict) and any(
+            strategy.get(key)
+            for key in [
+                "problem_recognition_questions",
+                "solution_discovery_questions",
+                "use_case_fit_questions",
+                "provider_comparison_questions",
+                "branded_validation_questions",
+                "implementation_questions",
+            ]
+        )
+        if has_journey_strategy or len(strategy_prompts) >= 12:
+            return self._filter_context_prompts(
+                self._deduplicate_prompts(strategy_prompts),
+                brand,
+                site_context,
+            )[:max_prompts]
+
+        prompts.extend(strategy_prompts)
+        prompts.extend(
+            self._positioning_prompts(positioning or {}, topic, profile_type)
+        )
         prompts.extend(self._content_derived_prompts(pages or [], brand, profile_type))
 
         for intent, questions in templates.items():
@@ -204,11 +279,20 @@ class PromptGapAnalyzer:
         if profile_type != "general":
             for intent, questions in PROFILE_PROMPTS["general"].items():
                 for question in questions[:1]:
+                    if self._skip_general_brand_template(profile_type, question):
+                        continue
                     prompts.append({
                         "prompt": question.format(brand=brand, topic=topic),
                         "intent": intent,
                     })
 
+        unique = self._deduplicate_prompts(prompts)
+        return self._filter_context_prompts(unique, brand, site_context)[:max_prompts]
+
+    def _deduplicate_prompts(
+        self,
+        prompts: List[Dict[str, str]],
+    ) -> List[Dict[str, str]]:
         seen = set()
         unique = []
         for item in prompts:
@@ -216,36 +300,225 @@ class PromptGapAnalyzer:
             if key not in seen:
                 seen.add(key)
                 unique.append(item)
-        return unique[:max_prompts]
+        return unique
 
-    def _positioning_prompts(self, positioning: Dict[str, Any], topic: str) -> List[Dict[str, str]]:
+    def _strategy_prompts(self, site_context: Dict[str, Any]) -> List[Dict[str, str]]:
+        strategy = site_context.get("question_strategy")
+        if not isinstance(strategy, dict):
+            return []
+
+        stage_map = {
+            "problem_recognition_questions": ("problem_recognition", "discovery"),
+            "solution_discovery_questions": ("solution_discovery", "discovery"),
+            "use_case_fit_questions": ("use_case_fit", "feature"),
+            "provider_comparison_questions": ("provider_comparison", "comparison"),
+            "branded_validation_questions": ("branded_validation", "trust"),
+            "implementation_questions": ("implementation", "transactional"),
+        }
+        legacy_map = {
+            "problem_aware_questions": ("problem_recognition", "discovery"),
+            "solution_aware_questions": ("solution_discovery", "feature"),
+            "comparison_questions": ("provider_comparison", "comparison"),
+            "trust_questions": ("branded_validation", "trust"),
+            "conversion_questions": ("implementation", "transactional"),
+            "support_or_post_purchase_questions": ("implementation", "support"),
+        }
+        active_map = stage_map if any(strategy.get(key) for key in stage_map) else legacy_map
+        prompts: List[Dict[str, str]] = []
+        for key, (stage, intent) in active_map.items():
+            questions = self._strategy_question_list(strategy.get(key))
+            for rank, question in enumerate(questions):
+                normalized = self._normalize_question(question)
+                if normalized:
+                    prompts.append({
+                        "prompt": normalized,
+                        "intent": intent,
+                        "source": "question_strategy",
+                        "journey_stage": stage,
+                        "journey_label": JOURNEY_STAGE_LABELS[stage],
+                        "stage_rank": JOURNEY_STAGES.index(stage),
+                        "question_rank": rank,
+                        "audience_scope": (
+                            "branded"
+                            if stage in {"branded_validation", "implementation"}
+                            else "unbranded"
+                        ),
+                    })
+        return prompts
+
+    def _strategy_question_list(self, value: Any) -> List[str]:
+        if not isinstance(value, list):
+            return []
+        questions: List[str] = []
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                questions.append(item)
+            elif isinstance(item, dict):
+                question = item.get("question") or item.get("prompt")
+                if isinstance(question, str) and question.strip():
+                    questions.append(question)
+        return questions
+
+    def _positioning_prompts(
+        self,
+        positioning: Dict[str, Any],
+        topic: str,
+        profile_type: str,
+    ) -> List[Dict[str, str]]:
         prompts: List[Dict[str, str]] = []
         locations = positioning.get("locations", [])
         value_props = positioning.get("value_props", [])
         products = positioning.get("products", []) or ([topic] if topic else [])
-        city = next((loc.title() for loc in locations if loc not in {"india", "indian"}), "")
+        market_scope = str(positioning.get("market_scope", "")).lower()
+        is_local_market = market_scope in {"local", "regional"}
+        place = next((str(loc).strip() for loc in locations if str(loc).strip()), "")
         product = products[0] if products else topic
+        is_commerce = profile_type == "ecommerce"
+        is_appliance_retail = self._is_appliance_retail_context(
+            positioning,
+            products,
+            topic,
+        )
 
         def add(prompt: str, intent: str, scope: str = "local"):
             normalized = self._normalize_question(prompt)
             if normalized:
                 prompts.append({"prompt": normalized, "intent": intent, "market_scope": scope})
 
-        if city and product:
-            add(f"Where can I buy affordable {product} in {city}?", "transactional")
-            add(f"Which {city} store offers the best price on {product}?", "transactional")
-            add(f"Can I buy {product} locally in {city} for less than online marketplaces?", "comparison")
-            add(f"Who offers warranty and local support for {product} in {city}?", "trust")
+        if is_local_market and is_commerce and place and product:
+            add(f"Where can I buy affordable {product} in {place}?", "transactional")
+            add(f"Which {place} store offers the best price on {product}?", "transactional")
+            add(f"Can I buy {product} locally in {place} for less than online marketplaces?", "comparison")
+            add(f"Who offers warranty and local support for {product} in {place}?", "trust")
 
-        if city and value_props:
-            add(f"Where can I get home appliances at wholesale prices in {city}?", "transactional")
-            add(f"Which appliance seller in {city} works with local dealers or wholesalers?", "trust")
+        if is_local_market and is_appliance_retail and place and value_props:
+            add(f"Where can I get home appliances at wholesale prices in {place}?", "transactional")
+            add(f"Which appliance seller in {place} works with local dealers or wholesalers?", "trust")
 
-        if positioning.get("market_scope") == "local":
+        if is_local_market:
             for prompt in prompts:
                 prompt["win_likelihood"] = "realistic"
 
         return prompts
+
+    def _is_appliance_retail_context(
+        self,
+        positioning: Dict[str, Any],
+        products: List[str],
+        topic: str,
+    ) -> bool:
+        context = " ".join([
+            str(positioning.get("business_type", "")),
+            str(topic),
+            *[str(product) for product in products],
+        ]).lower()
+        appliance_terms = [
+            "appliance",
+            "ceiling fan",
+            "water heater",
+            "geyser",
+            "mixer grinder",
+            "air cooler",
+            "exhaust fan",
+        ]
+        retail_terms = [
+            "retail",
+            "ecommerce",
+            "e-commerce",
+            "store",
+            "seller",
+            "dealer",
+            "marketplace",
+        ]
+        return (
+            any(term in context for term in appliance_terms)
+            and any(term in context for term in retail_terms)
+        )
+
+    def _prompt_topic(
+        self,
+        pages: Sequence[Dict[str, Any]],
+        brand: str,
+        site_context: Dict[str, Any],
+        positioning: Dict[str, Any],
+    ) -> str:
+        offers = self._context_list(site_context, "offers")
+        products = self._context_list(site_context, "products") or positioning.get("products", [])
+        candidates = offers or products
+        if candidates:
+            return candidates[0]
+
+        prompt_subject = self._clean_text(site_context.get("prompt_subject", ""))
+        if prompt_subject:
+            return prompt_subject
+
+        return self._topic_from_pages(pages, brand)
+
+    def _context_list(self, site_context: Dict[str, Any], key: str) -> List[str]:
+        value = site_context.get(key)
+        if isinstance(value, str) and value.strip():
+            return [self._clean_text(value)]
+        if isinstance(value, list):
+            return [self._clean_text(item) for item in value if self._clean_text(item)]
+        return []
+
+    def _skip_general_brand_template(self, profile_type: str, question: str) -> bool:
+        if profile_type != "ecommerce":
+            return False
+        question_l = question.lower()
+        return "{brand}" in question_l and any(
+            phrase in question_l
+            for phrase in [
+                "how much",
+                "cost",
+                "price",
+                "what is {brand}",
+                "what does {brand}",
+            ]
+        )
+
+    def _filter_context_prompts(
+        self,
+        prompts: List[Dict[str, str]],
+        brand: str,
+        site_context: Dict[str, Any],
+    ) -> List[Dict[str, str]]:
+        avoid_phrases = [
+            phrase.lower()
+            for phrase in self._context_list(site_context, "avoid_prompts_about")
+        ]
+        strategy = site_context.get("question_strategy")
+        if isinstance(strategy, dict):
+            avoid_phrases.extend(
+                phrase.lower()
+                for phrase in self._context_list(strategy, "questions_to_avoid")
+            )
+        brand_l = brand.lower()
+        entity_type = str(site_context.get("entity_type", "")).lower()
+        is_ecommerce_container = entity_type in {"ecommerce_store", "marketplace", "retailer"}
+
+        filtered = []
+        for prompt_def in prompts:
+            prompt_l = prompt_def["prompt"].lower()
+            if any(phrase and phrase in prompt_l for phrase in avoid_phrases):
+                continue
+            if is_ecommerce_container and self._is_brand_purchase_prompt(prompt_l, brand_l):
+                continue
+            filtered.append(prompt_def)
+        return filtered
+
+    def _is_brand_purchase_prompt(self, prompt_l: str, brand_l: str) -> bool:
+        if not brand_l or brand_l not in prompt_l:
+            return False
+        purchase_patterns = [
+            rf"\bbuying\s+{re.escape(brand_l)}\b",
+            rf"\bbuy\s+{re.escape(brand_l)}\b",
+            rf"\bprice range for\s+{re.escape(brand_l)}\b",
+            rf"\b{re.escape(brand_l)}\s+offers the best value\b",
+            rf"\bhow much does\s+{re.escape(brand_l)}\b",
+            rf"\bwhat should i check before buying\s+{re.escape(brand_l)}\b",
+        ]
+        return any(re.search(pattern, prompt_l) for pattern in purchase_patterns)
 
     def _content_derived_prompts(
         self,
@@ -432,21 +705,116 @@ class PromptGapAnalyzer:
                 scored.append((score, chunk))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        evidence = [self._format_evidence(score, chunk) for score, chunk in scored[:3]]
+        evidence = [
+            self._format_evidence(score, chunk, prompt_terms)
+            for score, chunk in scored[:3]
+        ]
         best_score = scored[0][0] if scored else 0
         coverage, answerability = self._coverage(best_score, evidence, prompt_terms)
+        stage = prompt_def.get("journey_stage") or self._fallback_stage(
+            prompt_def["intent"],
+            prompt,
+            brand,
+        )
+        eligibility = self._eligibility_score(
+            evidence,
+            prompt_terms,
+            stage,
+        )
+        opportunity = self._opportunity_score(
+            stage,
+            eligibility,
+            answerability,
+        )
 
         return {
             "prompt": prompt,
             "intent": prompt_def["intent"],
+            "source": prompt_def.get("source", "generated"),
             "market_scope": prompt_def.get("market_scope", "unknown"),
             "win_likelihood": prompt_def.get("win_likelihood", "unknown"),
+            "journey_stage": stage,
+            "journey_label": JOURNEY_STAGE_LABELS[stage],
+            "stage_rank": JOURNEY_STAGES.index(stage),
+            "question_rank": prompt_def.get("question_rank", 99),
+            "audience_scope": prompt_def.get(
+                "audience_scope",
+                "branded" if brand.lower() in prompt.lower() else "unbranded",
+            ),
             "coverage": coverage,
             "answerability_score": answerability,
+            "eligibility_score": eligibility,
+            "answer_completeness_score": answerability,
+            "opportunity_score": opportunity,
             "evidence": evidence,
-            "gap": self._gap_message(coverage, prompt_def["intent"]),
-            "recommended_fix": self._recommended_fix(coverage, prompt_def["intent"], prompt),
+            "gap": self._gap_message(coverage, prompt_def["intent"], stage),
+            "recommended_fix": self._recommended_fix(
+                coverage,
+                prompt_def["intent"],
+                prompt,
+                stage,
+            ),
         }
+
+    def _fallback_stage(self, intent: str, prompt: str, brand: str) -> str:
+        prompt_l = prompt.lower()
+        if brand.lower() in prompt_l:
+            if intent in {"transactional", "support"}:
+                return "implementation"
+            return "branded_validation"
+        if intent == "comparison":
+            return "provider_comparison"
+        if intent == "feature":
+            return "use_case_fit"
+        if intent in {"transactional", "support"}:
+            return "implementation"
+        return "solution_discovery"
+
+    def _eligibility_score(
+        self,
+        evidence: List[Dict[str, Any]],
+        prompt_terms: set[str],
+        stage: str,
+    ) -> int:
+        if not evidence:
+            return 0
+        matched: set[str] = set()
+        for item in evidence[:3]:
+            matched.update(item.get("matched_terms", []))
+        ratio = len(matched & prompt_terms) / max(len(prompt_terms), 1)
+        breadth_bonus = min(18, len(evidence) * 6)
+        structure_bonus = 8 if any(
+            item.get("type") in {"heading", "faq", "schema", "answer"}
+            for item in evidence[:3]
+        ) else 0
+        branded_bonus = 8 if stage in {"branded_validation", "implementation"} else 0
+        return min(100, int((ratio * 74) + breadth_bonus + structure_bonus + branded_bonus))
+
+    def _opportunity_score(
+        self,
+        stage: str,
+        eligibility: int,
+        completeness: int,
+    ) -> int:
+        demand_weight = JOURNEY_WEIGHTS.get(stage, 0.5)
+        eligibility_gap = 100 - eligibility
+        completeness_gap = 100 - completeness
+        return round(
+            demand_weight * ((eligibility_gap * 0.7) + (completeness_gap * 0.3))
+        )
+
+    def _rank_results(
+        self,
+        results: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        return sorted(
+            results,
+            key=lambda item: (
+                item.get("stage_rank", 99),
+                item.get("question_rank", 99),
+                -item.get("opportunity_score", 0),
+            ),
+        )
 
     def _coverage(
         self,
@@ -507,31 +875,77 @@ class PromptGapAnalyzer:
             "terms": self._keywords(clean),
         }
 
-    def _format_evidence(self, score: float, chunk: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_evidence(
+        self,
+        score: float,
+        chunk: Dict[str, Any],
+        prompt_terms: set[str],
+    ) -> Dict[str, Any]:
         return {
             "url": chunk["url"],
             "text": chunk["text"],
             "type": chunk["type"],
             "score": round(score, 1),
-            "matched_terms": sorted(list(chunk["terms"]))[:12],
+            "matched_terms": sorted(list(chunk["terms"] & prompt_terms))[:12],
         }
 
     def _summarize(self, results: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         counts = {"strong": 0, "partial": 0, "weak": 0, "missing": 0}
         intent_counts: Dict[str, Dict[str, int]] = {}
+        stage_counts: Dict[str, Dict[str, Any]] = {}
         for result in results:
             counts[result["coverage"]] = counts.get(result["coverage"], 0) + 1
             intent = result["intent"]
             intent_counts.setdefault(intent, {"strong": 0, "partial": 0, "weak": 0, "missing": 0})
             intent_counts[intent][result["coverage"]] += 1
+            stage = result.get("journey_stage", "solution_discovery")
+            stage_data = stage_counts.setdefault(stage, {
+                "label": JOURNEY_STAGE_LABELS.get(stage, stage.replace("_", " ").title()),
+                "total": 0,
+                "eligibility_total": 0,
+                "completeness_total": 0,
+            })
+            stage_data["total"] += 1
+            stage_data["eligibility_total"] += result.get("eligibility_score", 0)
+            stage_data["completeness_total"] += result.get(
+                "answer_completeness_score",
+                result.get("answerability_score", 0),
+            )
 
         total = max(len(results), 1)
         covered = counts["strong"] + (counts["partial"] * 0.6) + (counts["weak"] * 0.25)
+        eligibility_score = round(
+            sum(result.get("eligibility_score", 0) for result in results) / total,
+            1,
+        )
+        completeness_score = round(
+            sum(
+                result.get(
+                    "answer_completeness_score",
+                    result.get("answerability_score", 0),
+                )
+                for result in results
+            ) / total,
+            1,
+        )
+        for stage_data in stage_counts.values():
+            stage_total = max(stage_data["total"], 1)
+            stage_data["eligibility_score"] = round(
+                stage_data.pop("eligibility_total") / stage_total,
+                1,
+            )
+            stage_data["completeness_score"] = round(
+                stage_data.pop("completeness_total") / stage_total,
+                1,
+            )
         return {
             "total_prompts": len(results),
             "coverage_score": round((covered / total) * 100, 1),
             "coverage_counts": counts,
             "intent_counts": intent_counts,
+            "eligibility_score": eligibility_score,
+            "answer_completeness_score": completeness_score,
+            "stage_counts": stage_counts,
         }
 
     def _topic_from_pages(self, pages: Sequence[Dict[str, Any]], brand: str) -> str:
@@ -603,18 +1017,34 @@ class PromptGapAnalyzer:
     def _clean_text(self, text: str) -> str:
         return re.sub(r"\s+", " ", str(text or "")).strip()
 
-    def _gap_message(self, coverage: str, intent: str) -> str:
+    def _gap_message(self, coverage: str, intent: str, stage: str) -> str:
         if coverage == "strong":
-            return "The crawled site has citeable local evidence for this prompt."
+            return "The crawled site has citeable evidence for this question."
         if coverage == "partial":
             return "Related evidence exists, but the answer may be incomplete or scattered."
         if coverage == "weak":
             return "The site is topically adjacent but does not answer the prompt directly."
-        return f"No strong local evidence was found for this {intent} prompt."
+        if stage in {"problem_recognition", "solution_discovery"}:
+            return "The website does not establish a strong association with this user need."
+        return f"No strong website evidence was found for this {intent} question."
 
-    def _recommended_fix(self, coverage: str, intent: str, prompt: str) -> str:
+    def _recommended_fix(
+        self,
+        coverage: str,
+        intent: str,
+        prompt: str,
+        stage: str,
+    ) -> str:
         if coverage == "strong":
             return "Keep this answer visible and citeable with clear headings or FAQ/schema."
+        if stage == "problem_recognition":
+            return "Create a problem-led use-case page that connects this need to the relevant solution and outcome."
+        if stage == "solution_discovery":
+            return "State the solution category, target buyer, use case, and measurable outcome in crawlable page copy."
+        if stage == "use_case_fit":
+            return "Add a use-case section with method, inputs, outputs, limitations, and outcome proof."
+        if stage == "implementation":
+            return "Document onboarding, integration, security, support, ownership, and delivery expectations."
         if intent == "comparison":
             return "Add comparison or alternatives content that explains positioning and tradeoffs."
         if intent == "trust":

@@ -115,6 +115,17 @@ class ExtractionOrchestrator:
         if page_data.error:
             logger.error(f"Failed to fetch {url}: {page_data.error}")
             raise Exception(f"Failed to fetch page: {page_data.error}")
+        if page_data.status_code >= 400:
+            html_l = (page_data.html or "").lower()
+            provider = ""
+            if "akamai" in html_l or "edgesuite" in html_l:
+                provider = " by Akamai"
+            elif "cloudflare" in html_l:
+                provider = " by Cloudflare"
+            raise Exception(
+                f"Page fetch blocked or failed{provider} "
+                f"(HTTP {page_data.status_code})"
+            )
         
         # Step 2: Parse HTML
         parser = ContentParser(page_data.html)
@@ -292,4 +303,3 @@ class ExtractionOrchestrator:
             'is_https': data.get('url', '').startswith('https://'),
             'has_meta_description': bool(data.get('meta_tags', {}).get('description')),
         }
-

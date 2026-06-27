@@ -31,6 +31,7 @@ class DomainCrawler:
         self.visited: Set[str] = set()
         self.discovered: Set[str] = set()
         self.progress_callback = progress_callback
+        self.last_discovery_error = ""
 
     def _report_discovery_progress(self, count: int, message: str):
         if self.progress_callback:
@@ -227,6 +228,11 @@ class DomainCrawler:
                     })
                     
                     if response.status_code != 200:
+                        if url == start_url and response.status_code in {401, 403, 429}:
+                            self.last_discovery_error = self._blocked_message(
+                                response.status_code,
+                                response.text,
+                            )
                         continue
                     
                     discovered.add(url)
@@ -247,6 +253,19 @@ class DomainCrawler:
                     logger.debug(f"Failed to crawl {url}: {e}")
         
         return discovered
+
+    def _blocked_message(self, status_code: int, html: str) -> str:
+        html_l = (html or "").lower()
+        provider = ""
+        if "akamai" in html_l or "edgesuite" in html_l:
+            provider = " by Akamai"
+        elif "cloudflare" in html_l:
+            provider = " by Cloudflare"
+        return (
+            f"Automated access was blocked{provider} (HTTP {status_code}). "
+            "The crawler could not read the homepage or discover links. "
+            "Use a previously saved local crawl, or audit an exported HTML copy."
+        )
     
     def _extract_links(self, soup: BeautifulSoup, current_url: str, base_domain: str) -> List[str]:
         """Extract valid links from a page"""
@@ -338,9 +357,60 @@ class DomainAuditOrchestrator:
             Aggregated audit results
         """
         from audit_pipeline import AuditPipeline
+        from reporting.domain_intelligence import (
+            DomainIntelligencePreflight,
+            DomainStrategySynthesizer,
+            prioritize_urls_with_intelligence,
+        )
         
         logger.info(f"Starting domain audit for: {domain_url}")
+        domain_intelligence = {}
+        use_local_crawl = bool(
+            self.options.get('use_local_crawl') or self.options.get('local_crawl_only')
+        )
+        run_preflight = not (
+            use_local_crawl
+            and not self.options.get("run_domain_intelligence_for_local_crawl")
+        )
         
+        # Report progress: intelligence preflight
+        if run_preflight and self.tracker and self.job_id:
+            self.tracker.update(
+                self.job_id,
+                status="intelligence",
+                current_step="Building domain intelligence preflight...",
+                message=f"Understanding {domain_url} before crawling"
+            )
+        if run_preflight:
+            try:
+                intelligence_options = dict(self.options)
+                if use_local_crawl:
+                    from crawler.crawl_store import build_cached_domain_evidence
+
+                    intelligence_options["domain_evidence"] = build_cached_domain_evidence(
+                        domain_url
+                    )
+                preflight = DomainIntelligencePreflight(
+                    model=(
+                        self.options.get("domain_intelligence_model")
+                        or self.options.get("analysis_model")
+                    )
+                )
+                domain_intelligence = await asyncio.to_thread(
+                    preflight.analyze,
+                    domain_url,
+                    intelligence_options,
+                )
+            except Exception as e:
+                logger.warning(f"Domain intelligence preflight failed: {e}")
+        elif self.tracker and self.job_id:
+            self.tracker.update(
+                self.job_id,
+                status="discovering",
+                current_step="Loading URLs from local crawl cache...",
+                message="Skipping domain intelligence preflight for local crawl"
+            )
+
         # Report progress: discovering
         if self.tracker and self.job_id:
             self.tracker.update(
@@ -350,16 +420,42 @@ class DomainAuditOrchestrator:
                 message=f"Analyzing {domain_url}"
             )
         
-        # Step 1: Discover URLs
-        urls = await self.crawler.discover_urls(domain_url)
+        # Step 1: Discover URLs or reuse local cache
+        if use_local_crawl:
+            from crawler.crawl_store import list_cached_urls
+
+            urls = list_cached_urls(domain_url)[:self.max_pages]
+            logger.info(f"Loaded {len(urls)} cached URLs for {domain_url}")
+        else:
+            original_crawler_limit = self.crawler.max_pages
+            if self.max_pages > 0 and self.max_pages < 9999 and domain_intelligence:
+                self.crawler.max_pages = min(max(self.max_pages * 5, self.max_pages), 1000)
+            urls = await self.crawler.discover_urls(domain_url)
+            self.crawler.max_pages = original_crawler_limit
+            if domain_intelligence:
+                urls = prioritize_urls_with_intelligence(
+                    urls,
+                    domain_intelligence,
+                    self.max_pages,
+                )
         logger.info(f"Discovered {len(urls)} URLs to audit")
         
         if not urls:
+            discovery_error = self.crawler.last_discovery_error
             if self.tracker and self.job_id:
-                self.tracker.complete_job(self.job_id, success=False, message="No URLs discovered")
+                self.tracker.complete_job(
+                    self.job_id,
+                    success=False,
+                    message=discovery_error or "No URLs discovered",
+                )
             return {
                 'domain': domain_url,
-                'error': 'No URLs discovered',
+                'error': (
+                    'No local crawl cache found. Run a normal crawl first.'
+                    if use_local_crawl
+                    else discovery_error or 'No URLs discovered'
+                ),
+                'discovery_blocked': bool(discovery_error),
                 'pages_audited': 0
             }
         
@@ -380,11 +476,14 @@ class DomainAuditOrchestrator:
         # Step 2: Audit each page (with concurrency limit)
         pipeline = AuditPipeline()
         page_results = []
+        page_options = dict(self.options)
+        page_options["llm_prompt_eval"] = False
+        page_options["external_aeo_validation"] = False
         
         # Process in batches
         for i in range(0, len(urls), self.max_concurrent):
             batch = urls[i:i + self.max_concurrent]
-            batch_tasks = [pipeline.audit_page(url, self.options) for url in batch]
+            batch_tasks = [pipeline.audit_page(url, page_options) for url in batch]
             batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
             
             for url, result in zip(batch, batch_results):
@@ -412,15 +511,76 @@ class DomainAuditOrchestrator:
             
             logger.info(f"Audited {len(page_results)}/{len(urls)} pages...")
         
+        valid_results = [
+            result for result in page_results
+            if result.get("overall_score", 0) > 0
+        ]
+        final_strategy = domain_intelligence
+        run_final_strategy = not (
+            use_local_crawl
+            and not self.options.get("run_strategy_for_local_crawl")
+        )
+        if valid_results and run_final_strategy:
+            if self.tracker and self.job_id:
+                self.tracker.update(
+                    self.job_id,
+                    status="strategy",
+                    current_step="Building final question strategy...",
+                    pages_audited=len(page_results),
+                    total_urls=len(urls),
+                    message="Synthesizing crawled evidence into buyer questions",
+                )
+            try:
+                from crawler.crawl_store import build_page_results_evidence
+
+                synthesizer = DomainStrategySynthesizer(
+                    model=self.options.get("strategy_model") or "auto"
+                )
+                final_strategy = await asyncio.to_thread(
+                    synthesizer.analyze,
+                    domain_url,
+                    build_page_results_evidence(valid_results),
+                    domain_intelligence,
+                )
+            except Exception as e:
+                logger.warning(f"Final domain strategy failed: {e}")
+        elif valid_results and self.tracker and self.job_id:
+            self.tracker.update(
+                self.job_id,
+                status="finalizing",
+                current_step="Finalizing report...",
+                pages_audited=len(page_results),
+                total_urls=len(urls),
+                message="Skipping final strategy synthesis for local crawl",
+            )
+
         # Step 3: Aggregate results
-        aggregated = self._aggregate_results(domain_url, page_results)
+        aggregated = await asyncio.to_thread(
+            self._aggregate_results,
+            domain_url,
+            page_results,
+            domain_intelligence,
+            final_strategy,
+        )
+        try:
+            from crawler.crawl_store import persist_domain_audit
+
+            aggregated['crawl_artifact_path'] = persist_domain_audit(
+                domain_url,
+                self.job_id,
+                urls,
+                page_results,
+                aggregated,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to persist domain crawl data: {e}")
         
         # Report aggregation. The route stores the result before marking the
         # job complete so SSE listeners can reliably fetch the final payload.
         if self.tracker and self.job_id:
             self.tracker.update(
                 self.job_id,
-                status="auditing",
+                status="finalizing",
                 current_step="Finalizing report...",
                 pages_audited=len(page_results),
                 total_urls=len(urls),
@@ -430,7 +590,13 @@ class DomainAuditOrchestrator:
         logger.info(f"Domain audit complete: {aggregated['overall_score']}/100")
         return aggregated
     
-    def _aggregate_results(self, domain_url: str, page_results: List[Dict]) -> Dict:
+    def _aggregate_results(
+        self,
+        domain_url: str,
+        page_results: List[Dict],
+        domain_intelligence: Dict | None = None,
+        domain_strategy: Dict | None = None,
+    ) -> Dict:
         """Aggregate results from multiple pages with detailed per-page breakdown"""
         
         # Filter out errors
@@ -509,6 +675,8 @@ class DomainAuditOrchestrator:
         
         aggregated = {
             'domain': domain_url,
+            'domain_intelligence': domain_intelligence or {},
+            'domain_strategy': domain_strategy or domain_intelligence or {},
             'overall_score': round(avg_score, 1),
             'grade': grade,
             'pages_audited': len(page_results),
@@ -534,10 +702,30 @@ class DomainAuditOrchestrator:
         try:
             from reporting.prompt_gap_analyzer import PromptGapAnalyzer
             from reporting.positioning_analyzer import PositioningAnalyzer
+            from reporting.domain_intelligence import merge_intelligence_into_site_context
+            from reporting.site_context import load_site_context
+
+            site_context = load_site_context(
+                domain_url,
+                self.options.get('site_context')
+                or self.options.get('supplemental_context')
+                or self.options.get('site_context_path')
+                or self.options.get('supplemental_context_path'),
+            )
+            site_context = merge_intelligence_into_site_context(
+                site_context,
+                domain_strategy or domain_intelligence or {},
+            )
+            site_context["_answerability_model"] = (
+                self.options.get("domain_intelligence_model")
+                or self.options.get("analysis_model")
+                or "auto"
+            )
             aggregated['positioning_analysis'] = PositioningAnalyzer().analyze(
                 valid_results,
                 domain_url,
                 primary_profile,
+                site_context,
             )
             aggregated['prompt_analysis'] = PromptGapAnalyzer().analyze(
                 valid_results,
@@ -546,7 +734,24 @@ class DomainAuditOrchestrator:
                 max_prompts=24,
                 use_llm=bool(self.options.get('llm_prompt_eval')),
                 positioning=aggregated['positioning_analysis'],
+                site_context=site_context,
             )
+            if self.options.get('external_aeo_validation'):
+                if self.tracker and self.job_id:
+                    self.tracker.update(
+                        self.job_id,
+                        status="external",
+                        current_step="Validating with external AEOs...",
+                        pages_audited=len(page_results),
+                        total_urls=len(page_results),
+                        message="Asking generated questions to configured answer engines",
+                    )
+                from reporting.external_aeo_validator import ExternalAEOValidator
+
+                aggregated['external_aeo_analysis'] = ExternalAEOValidator(
+                    providers=self.options.get('external_aeo_providers'),
+                    max_questions=self.options.get('external_aeo_max_questions'),
+                ).validate(aggregated, site_context)
         except Exception as e:
             logger.warning(f"Failed to generate prompt gap analysis: {e}")
             aggregated['prompt_analysis'] = {}

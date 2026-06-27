@@ -11,10 +11,11 @@ import { GeoChapter } from './chapters/GeoChapter';
 import { ActionsChapter } from './chapters/ActionsChapter';
 import { PromptGapChapter } from './chapters/PromptGapChapter';
 import { PositioningChapter } from './chapters/PositioningChapter';
+import { ExternalAEOChapter } from './chapters/ExternalAEOChapter';
 import { AuditReportResult, isDomainResult } from '@/types/audit';
 import { formatCategoryName } from '@/lib/report-utils';
 
-type ChapterType = 'cover' | 'summary' | 'positioning' | 'prompts' | 'category' | 'geo' | 'actions';
+type ChapterType = 'cover' | 'summary' | 'positioning' | 'prompts' | 'external-aeo' | 'category' | 'geo' | 'actions';
 
 interface ChapterDef {
   id: string;
@@ -46,7 +47,11 @@ function buildChapters(result: AuditReportResult): ChapterDef[] {
     chapters.push({ id: 'prompts', type: 'prompts', label: 'Prompts' });
   }
 
-  Object.keys(result.breakdown).forEach((category, i) => {
+  if (result.external_aeo_analysis?.enabled) {
+    chapters.push({ id: 'external-aeo', type: 'external-aeo', label: 'AEOs' });
+  }
+
+  Object.keys(result.breakdown || {}).forEach((category, i) => {
     chapters.push({
       id: `category-${category}`,
       type: 'category',
@@ -156,13 +161,18 @@ export function ReportBook({
               content = <PositioningChapter analysis={result.positioning_analysis} />;
             } else if (chapter.type === 'prompts' && result.prompt_analysis) {
               content = <PromptGapChapter analysis={result.prompt_analysis} />;
+            } else if (chapter.type === 'external-aeo' && result.external_aeo_analysis) {
+              content = <ExternalAEOChapter analysis={result.external_aeo_analysis} />;
             } else if (chapter.type === 'category' && chapter.category) {
+              const categoryData = result.breakdown?.[chapter.category];
               content = (
-                <CategoryChapter
-                  category={chapter.category}
-                  data={result.breakdown[chapter.category]}
-                  chapterIndex={chapter.categoryIndex ?? 1}
-                />
+                categoryData && (
+                  <CategoryChapter
+                    category={chapter.category}
+                    data={categoryData}
+                    chapterIndex={chapter.categoryIndex ?? 1}
+                  />
+                )
               );
             } else if (chapter.type === 'geo' && isDomainResult(result) && result.geo_score) {
               content = <GeoChapter geoScore={result.geo_score} />;

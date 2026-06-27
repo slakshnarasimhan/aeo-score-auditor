@@ -16,6 +16,14 @@ interface ProgressUpdate {
   current_url?: string;
 }
 
+interface AnalysisModelOption {
+  value: string;
+  label: string;
+  provider: 'auto' | 'openai' | 'ollama';
+  available: boolean;
+  size?: number;
+}
+
 const PROFILE_OPTIONS = [
   { value: 'auto', label: 'Auto-detect' },
   { value: 'ecommerce', label: 'Ecommerce' },
@@ -26,6 +34,45 @@ const PROFILE_OPTIONS = [
   { value: 'documentation', label: 'Documentation' },
   { value: 'general', label: 'General Website' },
 ];
+
+const PROGRESS_STATUS: Record<string, { label: string; className: string }> = {
+  intelligence: {
+    label: 'Understanding',
+    className: 'bg-violet-200 text-violet-800',
+  },
+  discovering: {
+    label: 'Discovering',
+    className: 'bg-yellow-200 text-yellow-800',
+  },
+  auditing: {
+    label: 'Auditing',
+    className: 'bg-blue-200 text-blue-800',
+  },
+  strategy: {
+    label: 'Strategy',
+    className: 'bg-indigo-200 text-indigo-800',
+  },
+  external: {
+    label: 'External AEOs',
+    className: 'bg-emerald-200 text-emerald-800',
+  },
+  finalizing: {
+    label: 'Finalizing',
+    className: 'bg-cyan-200 text-cyan-800',
+  },
+  completed: {
+    label: 'Completed',
+    className: 'bg-green-200 text-green-800',
+  },
+  done: {
+    label: 'Completed',
+    className: 'bg-green-200 text-green-800',
+  },
+  failed: {
+    label: 'Failed',
+    className: 'bg-red-200 text-red-800',
+  },
+};
 
 function ProfileSelector({
   value,
@@ -65,12 +112,70 @@ function ProfileSelector({
   );
 }
 
+function ModelSelector({
+  id,
+  title,
+  description,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  value: string;
+  options: AnalysisModelOption[];
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="mb-6 border border-gray-200 bg-gray-50 px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <label htmlFor={id} className="block text-sm font-semibold text-gray-800">
+            {title}
+          </label>
+          <p className="mt-1 text-xs text-gray-500">
+            {description}
+          </p>
+        </div>
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-72"
+          disabled={disabled}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [url, setUrl] = useState<string>('');
   const [domain, setDomain] = useState<string>('');
   const [maxPages, setMaxPages] = useState<number>(100);
   const [siteProfile, setSiteProfile] = useState<string>('auto');
   const [llmPromptEval, setLlmPromptEval] = useState<boolean>(false);
+  const [externalAeoValidation, setExternalAeoValidation] = useState<boolean>(false);
+  const [useLocalCrawl, setUseLocalCrawl] = useState<boolean>(false);
+  const [domainIntelligenceModel, setDomainIntelligenceModel] = useState<string>('auto');
+  const [strategyModel, setStrategyModel] = useState<string>('auto');
+  const [analysisModels, setAnalysisModels] = useState<AnalysisModelOption[]>([
+    {
+      value: 'auto',
+      label: 'Automatic',
+      provider: 'auto',
+      available: true,
+    },
+  ]);
   const [auditType, setAuditType] = useState<'page' | 'domain'>('page');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +186,34 @@ export default function Home() {
   // Progress tracking
   const [progress, setProgress] = useState<ProgressUpdate | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  const progressStatus = progress
+    ? PROGRESS_STATUS[progress.status] || {
+        label: 'Processing',
+        className: 'bg-gray-200 text-gray-800',
+      }
+    : null;
+
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/v1/audit/models`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (Array.isArray(data.models) && data.models.length > 0) {
+          setAnalysisModels(data.models);
+          if (data.defaults?.domain_intelligence_model) {
+            setDomainIntelligenceModel(data.defaults.domain_intelligence_model);
+          }
+          if (data.defaults?.strategy_model) {
+            setStrategyModel(data.defaults.strategy_model);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load analysis models:', err);
+      }
+    };
+    loadModels();
+  }, []);
 
   // SSE for progress tracking
   useEffect(() => {
@@ -96,7 +229,20 @@ export default function Home() {
       if (pollInterval) clearInterval(pollInterval);
     };
 
+    const hasRenderableBreakdown = (result: DomainAuditResult | null | undefined) => {
+      return Boolean(result?.breakdown && Object.keys(result.breakdown).length > 0);
+    };
+
     const finishWithResult = (result: DomainAuditResult) => {
+      if (!hasRenderableBreakdown(result)) {
+        setError((result as any)?.error || 'Domain audit finished without any successful page scores.');
+        setDomainResult(null);
+        setProgress(null);
+        setLoading(false);
+        setJobId(null);
+        stopTracking();
+        return;
+      }
       setDomainResult(result);
       setProgress(null);
       setLoading(false);
@@ -192,7 +338,14 @@ export default function Home() {
           url,
           deep_crawl: false,
           re_audit: false,
-          options: { site_profile: siteProfile, llm_prompt_eval: llmPromptEval },
+          options: {
+            site_profile: siteProfile,
+            llm_prompt_eval: llmPromptEval,
+            external_aeo_validation: externalAeoValidation,
+            use_local_crawl: useLocalCrawl,
+            domain_intelligence_model: domainIntelligenceModel,
+            strategy_model: strategyModel,
+          },
         }),
       });
 
@@ -235,6 +388,10 @@ export default function Home() {
             max_pages: maxPages,
             site_profile: siteProfile,
             llm_prompt_eval: llmPromptEval,
+            external_aeo_validation: externalAeoValidation,
+            use_local_crawl: useLocalCrawl,
+            domain_intelligence_model: domainIntelligenceModel,
+            strategy_model: strategyModel,
           } 
         }),
       });
@@ -381,6 +538,26 @@ export default function Home() {
           disabled={loading}
         />
 
+        <ModelSelector
+          id="domain-intelligence-model"
+          title="Domain Intelligence Model"
+          description="Fast pre-crawl classification, crawl focus, and batched answerability checks."
+          value={domainIntelligenceModel}
+          options={analysisModels}
+          onChange={setDomainIntelligenceModel}
+          disabled={loading}
+        />
+
+        <ModelSelector
+          id="strategy-model"
+          title="Final Strategy Model"
+          description="Runs once after crawling to refine the business context and buyer-question strategy."
+          value={strategyModel}
+          options={analysisModels}
+          onChange={setStrategyModel}
+          disabled={loading}
+        />
+
         <label className="mb-6 flex items-start gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-stone-700">
           <input
             type="checkbox"
@@ -394,7 +571,43 @@ export default function Home() {
               LLM-check prompt answers
             </span>
             <span className="text-xs text-stone-500">
-              Uses OpenAI when configured to judge whether retrieved site evidence truly answers each prompt.
+              Uses the selected analysis model to judge whether retrieved site evidence truly answers each prompt.
+            </span>
+          </span>
+        </label>
+
+        <label className="mb-6 flex items-start gap-3 rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-stone-700">
+          <input
+            type="checkbox"
+            checked={externalAeoValidation}
+            onChange={(e) => setExternalAeoValidation(e.target.checked)}
+            disabled={loading}
+            className="mt-1 h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
+          />
+          <span>
+            <span className="block font-semibold text-stone-900">
+              Validate against external AEOs
+            </span>
+            <span className="text-xs text-stone-500">
+              Asks the generated questions to configured external engines and compares visibility with the local estimate.
+            </span>
+          </span>
+        </label>
+
+        <label className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-stone-700">
+          <input
+            type="checkbox"
+            checked={useLocalCrawl}
+            onChange={(e) => setUseLocalCrawl(e.target.checked)}
+            disabled={loading}
+            className="mt-1 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"
+          />
+          <span>
+            <span className="block font-semibold text-stone-900">
+              Use local crawl only
+            </span>
+            <span className="text-xs text-stone-500">
+              Reuses saved crawl data from domains/crawls and skips downloading pages.
             </span>
           </span>
         </label>
@@ -462,16 +675,8 @@ export default function Home() {
             {/* Status Badge */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  progress.status === 'discovering' ? 'bg-yellow-200 text-yellow-800' :
-                  progress.status === 'auditing' ? 'bg-blue-200 text-blue-800' :
-                  progress.status === 'completed' ? 'bg-green-200 text-green-800' :
-                  'bg-red-200 text-red-800'
-                }`}>
-                  {progress.status === 'discovering' ? '🔍 Discovering' :
-                   progress.status === 'auditing' ? '⚡ Auditing' :
-                   progress.status === 'completed' ? '✅ Completed' :
-                   '❌ Failed'}
+                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${progressStatus?.className}`}>
+                  {progressStatus?.label}
                 </div>
                 <h3 className="text-xl font-semibold text-gray-800">
                   {progress.current_step}

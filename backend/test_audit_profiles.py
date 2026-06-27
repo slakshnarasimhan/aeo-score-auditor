@@ -1,7 +1,14 @@
 import unittest
 
 from scoring.audit_profiles import infer_audit_profile
+from reporting.positioning_analyzer import PositioningAnalyzer
+from reporting.prompt_gap_analyzer import PromptGapAnalyzer
 from reporting.recommendation_generator import RecommendationGenerator
+from reporting.site_context import load_site_context
+from reporting.domain_intelligence import (
+    merge_intelligence_into_site_context,
+    prioritize_urls_with_intelligence,
+)
 
 
 class AuditProfileTests(unittest.TestCase):
@@ -72,7 +79,391 @@ class AuditProfileTests(unittest.TestCase):
         self.assertNotIn("citationability", categories)
         self.assertEqual(recommendations[0]["title"], "Improve app extraction")
 
+    def test_positioning_defaults_to_global_without_supplemental_context(self):
+        pages = [
+            {
+                "url": "https://www.satsure.co/contact",
+                "prompt_evidence": {
+                    "title": "SatSure - Satellite intelligence for enterprises",
+                    "meta_description": "Decision intelligence for agriculture, infrastructure, and BFSI teams.",
+                    "headings": ["Global satellite intelligence platform", "Our offices"],
+                    "paragraphs": [
+                        "SatSure works with banks, insurers, and governments across multiple markets.",
+                        "Registered office: Chennai, India. Enterprise teams can contact us for partnerships.",
+                    ],
+                },
+            }
+        ]
+
+        analysis = PositioningAnalyzer().analyze(
+            pages,
+            "https://www.satsure.co",
+            {"type": "general"},
+        )
+
+        self.assertNotEqual(analysis["market_scope"], "local")
+        self.assertEqual(analysis["market_scope"], "global")
+        self.assertNotIn("chennai", analysis["locations"])
+        self.assertNotIn("Chennai-focused", analysis["likely_wedge"])
+        self.assertFalse(
+            any("local buyers" in proof for proof in analysis["recommended_proof"])
+        )
+
+    def test_global_markets_are_not_labeled_as_local_relevance(self):
+        analysis = PositioningAnalyzer().analyze(
+            [],
+            "https://satsure.co",
+            {"type": "general"},
+            {
+                "market_scope": "global",
+                "locations": ["India", "United States", "United Kingdom"],
+                "offers": ["Earth observation analytics"],
+            },
+        )
+
+        self.assertIn(
+            "Markets served: India, United States, United Kingdom",
+            analysis["usp_claims"],
+        )
+        self.assertFalse(
+            any("Local relevance" in claim for claim in analysis["usp_claims"])
+        )
+
+    def test_positioning_uses_supplemental_context_for_local_scope(self):
+        pages = [
+            {
+                "url": "https://betterhomeapp.example",
+                "prompt_evidence": {
+                    "title": "BetterHomeApp - Home appliances in Chennai",
+                    "meta_description": "Affordable home appliances with delivery in Chennai.",
+                    "headings": ["Wholesale prices for Chennai buyers"],
+                    "paragraphs": [
+                        "Buy ceiling fan and water heater products from a local dealer in Chennai.",
+                        "We provide delivery in Chennai, warranty support, and installation.",
+                    ],
+                },
+            }
+        ]
+
+        analysis = PositioningAnalyzer().analyze(
+            pages,
+            "https://betterhomeapp.example",
+            {"type": "ecommerce"},
+            {
+                "market_scope": "local",
+                "locations": ["chennai"],
+                "products": ["home appliance"],
+                "value_props": ["wholesale"],
+            },
+        )
+
+        self.assertEqual(analysis["market_scope"], "local")
+        self.assertIn("chennai", analysis["locations"])
+        self.assertIn("Chennai-focused", analysis["likely_wedge"])
+
+    def test_site_context_loads_from_domains_folder_and_maps_offers(self):
+        context = load_site_context("https://betterhomeapp.com")
+        analysis = PositioningAnalyzer().analyze(
+            [],
+            "https://betterhomeapp.com",
+            {"type": "ecommerce"},
+            context,
+        )
+
+        self.assertEqual(analysis["market_scope"], "local")
+        self.assertIn("Chennai", analysis["locations"])
+        self.assertIn("home appliances", analysis["products"])
+        self.assertIn("/domains/site_context/betterhomeapp.com.json", analysis["context_source"])
+
+    def test_ecommerce_prompt_generation_uses_offers_not_brand_as_product(self):
+        context = load_site_context("https://betterhomeapp.com")
+        pages = [
+            {
+                "url": "https://betterhomeapp.com",
+                "prompt_evidence": {
+                    "title": "BetterHome - Home appliances in Chennai",
+                    "meta_description": "Buy home appliances, ceiling fans, and water heaters.",
+                    "headings": ["Home appliances at wholesale prices"],
+                    "paragraphs": ["BetterHome sells appliances with local warranty support."],
+                },
+            }
+        ]
+        positioning = PositioningAnalyzer().analyze(
+            pages,
+            "https://betterhomeapp.com",
+            {"type": "ecommerce"},
+            context,
+        )
+
+        analysis = PromptGapAnalyzer().analyze(
+            pages,
+            "https://betterhomeapp.com",
+            {"type": "ecommerce"},
+            positioning=positioning,
+            site_context=context,
+        )
+        prompts = [item["prompt"] for item in analysis["prompts"]]
+
+        self.assertNotIn("Which BetterHome offers the best value?", prompts)
+        self.assertNotIn("What should I check before buying BetterHome?", prompts)
+        self.assertNotIn("What is the price range for BetterHome?", prompts)
+        self.assertIn("What should I know before buying home appliances?", prompts)
+        self.assertIn("Which home appliances options offer the best value?", prompts)
+
+    def test_global_space_tech_does_not_receive_appliance_local_prompts(self):
+        context = {
+            "brand": "SatSure",
+            "entity_type": "company",
+            "business_type": "Earth Observation data and analytics",
+            "market_scope": "global",
+            "locations": ["India", "United States"],
+            "offers": [
+                "Crop yield forecasting",
+                "Claims validation",
+                "Earth observation data licensing",
+            ],
+        }
+        pages = [{
+            "url": "https://satsure.co",
+            "prompt_evidence": {
+                "title": "Earth intelligence and geospatial analytics",
+                "headings": ["Satellite intelligence for global enterprises"],
+                "paragraphs": [
+                    "SatSure offers direct access to Earth observation analytics and local risk insights."
+                ],
+            },
+        }]
+        positioning = PositioningAnalyzer().analyze(
+            pages,
+            "https://satsure.co",
+            {"type": "ecommerce"},
+            context,
+        )
+
+        analysis = PromptGapAnalyzer().analyze(
+            pages,
+            "https://satsure.co",
+            {"type": "ecommerce"},
+            positioning=positioning,
+            site_context=context,
+        )
+        prompts = [item["prompt"].lower() for item in analysis["prompts"]]
+
+        self.assertFalse(any("home appliance" in prompt for prompt in prompts))
+        self.assertFalse(any("appliance seller" in prompt for prompt in prompts))
+        self.assertFalse(
+            any(item.get("market_scope") == "local" for item in analysis["prompts"])
+        )
+
+    def test_deep_strategy_is_not_padded_with_generic_templates(self):
+        strategy = {
+            "problem_aware_questions": [
+                "How can satellite data reduce crop insurance loss ratios?",
+                "What makes manual agricultural claim validation unreliable?",
+                "How can utilities detect vegetation risk remotely?",
+            ],
+            "solution_aware_questions": [
+                "How accurate are crop yield forecasting models?",
+                "Can Earth observation data integrate with underwriting systems?",
+                "How frequently is satellite risk data updated?",
+            ],
+            "comparison_questions": [
+                "How do Earth observation providers compare on resolution?",
+                "What differentiates geospatial risk platforms?",
+                "Should we license satellite data or buy analytics?",
+            ],
+            "trust_questions": [
+                "What customer outcomes prove the models work?",
+                "How are model accuracy claims validated?",
+                "Which compliance standards does the platform support?",
+            ],
+        }
+        analysis = PromptGapAnalyzer().analyze(
+            [],
+            "https://satsure.co",
+            {"type": "ecommerce"},
+            site_context={
+                "brand": "SatSure",
+                "offers": ["Earth observation analytics"],
+                "question_strategy": strategy,
+            },
+        )
+
+        self.assertEqual(len(analysis["prompts"]), 12)
+        self.assertTrue(
+            all(item.get("source") == "question_strategy" for item in analysis["prompts"])
+        )
+
+    def test_question_journey_orders_unbranded_demand_before_brand_and_implementation(self):
+        strategy = {
+            "problem_recognition_questions": [
+                "How can I monitor crop health across thousands of farms?"
+            ],
+            "solution_discovery_questions": [
+                "Which satellite analytics platforms support crop monitoring?"
+            ],
+            "use_case_fit_questions": [
+                "Can satellite data validate agricultural damage claims?"
+            ],
+            "provider_comparison_questions": [
+                "Should I buy imagery or use an integrated analytics platform?"
+            ],
+            "branded_validation_questions": [
+                "How accurate are SatSure crop yield models?"
+            ],
+            "implementation_questions": [
+                "How long does SatSure integration take?"
+            ],
+        }
+        pages = [{
+            "url": "https://satsure.co",
+            "prompt_evidence": {
+                "title": "Satellite crop monitoring and Earth observation analytics",
+                "headings": ["Crop health monitoring", "Agricultural claims validation"],
+                "paragraphs": [
+                    "SatSure provides satellite analytics for crop monitoring and agricultural risk."
+                ],
+            },
+        }]
+
+        analysis = PromptGapAnalyzer().analyze(
+            pages,
+            "https://satsure.co",
+            {"type": "general"},
+            site_context={
+                "brand": "SatSure",
+                "offers": ["Earth observation analytics"],
+                "question_strategy": strategy,
+            },
+        )
+
+        self.assertEqual(
+            [item["journey_stage"] for item in analysis["prompts"]],
+            [
+                "problem_recognition",
+                "solution_discovery",
+                "use_case_fit",
+                "provider_comparison",
+                "branded_validation",
+                "implementation",
+            ],
+        )
+        self.assertEqual(analysis["prompts"][0]["audience_scope"], "unbranded")
+        self.assertEqual(analysis["prompts"][-1]["audience_scope"], "branded")
+        self.assertIn("eligibility_score", analysis["prompts"][0])
+        self.assertIn("answer_completeness_score", analysis["prompts"][0])
+        self.assertIn("eligibility_score", analysis["summary"])
+
+    def test_question_strategy_prompts_are_used_before_generated_templates(self):
+        intelligence = {
+            "brand_guess": "Aprisio",
+            "business": {
+                "entity_type": "coaching_community",
+                "category": "midlife coaching/community",
+                "core_offers": ["midlife coaching community"],
+                "primary_audience": ["women in midlife"],
+                "market_scope": "global",
+            },
+            "question_strategy": {
+                "problem_aware_questions": [
+                    "How do I know if I am going through a midlife transition?",
+                    "What helps when career and identity feel misaligned in midlife?",
+                ],
+                "solution_aware_questions": [
+                    "What does a midlife coaching community include?"
+                ],
+                "comparison_questions": [
+                    "How is midlife coaching different from therapy?",
+                    "Aprisio vs private coaching: what is different?",
+                ],
+                "trust_questions": [
+                    "Who runs Aprisio?"
+                ],
+                "conversion_questions": [
+                    "How do I join Aprisio?"
+                ],
+                "questions_to_avoid": ["marketing slogans as questions"],
+            },
+        }
+        context = merge_intelligence_into_site_context({}, intelligence)
+        analysis = PromptGapAnalyzer().analyze(
+            [],
+            "https://aprisio.com",
+            {"type": "general"},
+            max_prompts=5,
+            site_context=context,
+        )
+
+        prompts = analysis["prompts"]
+        self.assertEqual(
+            prompts[0]["prompt"],
+            "How do I know if I am going through a midlife transition?",
+        )
+        self.assertEqual(prompts[0]["source"], "question_strategy")
+        self.assertIn("How is midlife coaching different from therapy?", [p["prompt"] for p in prompts])
+
+    def test_sparse_domain_intelligence_does_not_inject_generic_questions(self):
+        intelligence = {
+            "brand_guess": "Saavigen",
+            "confidence": "low",
+            "business": {
+                "entity_type": "unknown",
+                "category": "unknown",
+                "core_offers": [],
+                "primary_audience": [],
+                "market_scope": "unknown",
+            },
+            "question_strategy": {
+                "problem_aware_questions": [],
+                "solution_aware_questions": [],
+                "comparison_questions": [],
+                "trust_questions": [
+                    "What is Saavigen?",
+                    "Who is Saavigen for?",
+                    "Is Saavigen trustworthy?",
+                ],
+                "conversion_questions": ["How do I get started with Saavigen?"],
+                "support_or_post_purchase_questions": [],
+                "questions_to_avoid": ["marketing slogans as questions"],
+            },
+        }
+
+        context = merge_intelligence_into_site_context({}, intelligence)
+
+        self.assertNotIn("question_strategy", context)
+        self.assertNotEqual(context.get("business_type"), "unknown")
+        self.assertNotEqual(context.get("market_scope"), "unknown")
+
+    def test_domain_intelligence_prioritizes_high_value_urls(self):
+        intelligence = {
+            "website_structure_hypothesis": {
+                "likely_important_sections": [
+                    {
+                        "crawler_priority": "high",
+                        "url_patterns_to_look_for": ["/services", "/about"],
+                    }
+                ],
+                "crawl_strategy": {
+                    "start_pages": ["/"],
+                    "must_include_patterns": ["/services", "/pricing"],
+                    "avoid_patterns": ["/privacy"],
+                },
+            }
+        }
+        urls = [
+            "https://example.com/privacy",
+            "https://example.com/blog/post",
+            "https://example.com/services",
+            "https://example.com/",
+            "https://example.com/pricing",
+        ]
+
+        ordered = prioritize_urls_with_intelligence(urls, intelligence, max_pages=3)
+
+        self.assertEqual(ordered[0], "https://example.com/")
+        self.assertIn("https://example.com/services", ordered)
+        self.assertNotIn("https://example.com/privacy", ordered)
+
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -60,4 +60,7 @@ coverage/
 *.bak
 *.tmp
 .cache/
-
+domains/crawls/*
+!domains/crawls/.gitkeep
+domains/intelligence/*
+!domains/intelligence/.gitkeep

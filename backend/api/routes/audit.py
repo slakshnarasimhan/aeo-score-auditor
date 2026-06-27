@@ -9,6 +9,9 @@ from loguru import logger
 import uuid
 from datetime import datetime
 import asyncio
+import json
+import os
+from urllib.request import Request, urlopen
 
 router = APIRouter()
 
@@ -23,6 +26,16 @@ class AuditOptions(BaseModel):
     calculate_geo: bool = True  # Include GEO score in domain audits
     site_profile: str = "auto"  # auto, ecommerce, saas_app, publisher, local_business, education, documentation, general
     llm_prompt_eval: bool = False  # Use an LLM to judge prompt answerability from local evidence
+    site_context: Optional[Dict[str, Any]] = None  # Supplemental positioning context for this website
+    use_local_crawl: bool = False  # Re-score from persisted crawl data without fetching pages
+    skip_domain_intelligence: bool = False  # Skip OpenAI/domain preflight for domain audits
+    use_cached_domain_intelligence: bool = False  # Reuse domains/intelligence/<domain>.json when available
+    domain_intelligence_model: str = "auto"
+    strategy_model: str = "auto"
+    analysis_model: Optional[str] = None  # Backward-compatible legacy model option
+    external_aeo_validation: bool = False  # Ask generated prompts to external answer engines
+    external_aeo_providers: Optional[List[str]] = None
+    external_aeo_max_questions: Optional[int] = None
 
 
 class PageAuditRequest(BaseModel):
@@ -46,6 +59,72 @@ class AuditResponse(BaseModel):
     url: str
     estimated_completion: Optional[str] = None
     status_url: str
+
+
+@router.get("/models")
+async def list_analysis_models():
+    """Return analysis models available to the audit UI."""
+    ollama_key = os.getenv("OLLAMA_KEY") or os.getenv("OLLAMA_API_KEY")
+    models = [{
+        "value": "auto",
+        "label": "Automatic (Ollama Cloud preferred)" if ollama_key else "Automatic",
+        "provider": "auto",
+        "available": True,
+    }]
+    openai_model = os.getenv("DOMAIN_INTELLIGENCE_MODEL", "gpt-4o-mini")
+    if os.getenv("OPENAI_API_KEY"):
+        models.append({
+            "value": f"openai:{openai_model}",
+            "label": f"{openai_model} (OpenAI)",
+            "provider": "openai",
+            "available": True,
+        })
+
+    if ollama_key:
+        base_url = os.getenv("OLLAMA_BASE_URL", "https://ollama.com").rstrip("/")
+        try:
+            request = Request(
+                f"{base_url}/api/tags",
+                headers={"Authorization": f"Bearer {ollama_key}"},
+            )
+            with urlopen(request, timeout=10) as response:
+                payload = json.load(response)
+            for item in payload.get("models", []):
+                name = item.get("name")
+                is_embedding_model = name and any(
+                    marker in name.lower()
+                    for marker in ("embed", "embedding", "nomic-embed")
+                )
+                if name and not is_embedding_model:
+                    models.append({
+                        "value": f"ollama:{name}",
+                        "label": f"{name} (Ollama Cloud)",
+                        "provider": "ollama",
+                        "available": True,
+                        "size": item.get("size"),
+                    })
+        except Exception as e:
+            logger.warning(f"Could not list Ollama Cloud models: {e}")
+
+    available_values = {item["value"] for item in models}
+
+    def available_default(preferred: str) -> str:
+        candidate = f"ollama:{preferred}"
+        if candidate in available_values:
+            return candidate
+        return "auto"
+
+    return {
+        "models": models,
+        "defaults": {
+            "domain_intelligence_model": available_default(
+                os.getenv("OLLAMA_DOMAIN_MODEL", "gpt-oss:20b")
+            ),
+            "strategy_model": available_default(
+                os.getenv("OLLAMA_STRATEGY_MODEL", "qwen3.5:397b")
+            ),
+        },
+    }
 
 
 @router.post("/page")
@@ -113,6 +192,12 @@ async def audit_domain(request: DomainAuditRequest, background_tasks: Background
     # Initialize progress tracking
     from progress_tracker import progress_tracker
     progress_tracker.create_job(job_id, total_urls=max_pages)
+    if request.options and request.options.get("use_local_crawl"):
+        progress_tracker.update(
+            job_id,
+            current_step="Preparing local crawl audit...",
+            message="Loading cached crawl data",
+        )
     
     # Run audit in background
     background_tasks.add_task(_run_domain_audit, job_id, domain_url, max_pages, request.options or {})
@@ -142,6 +227,15 @@ async def _run_domain_audit(job_id: str, domain_url: str, max_pages: int, option
             options=options
         )
         result = await orchestrator.audit_domain(domain_url)
+
+        if not result or result.get('error') or not result.get('breakdown'):
+            from progress_tracker import progress_tracker
+
+            message = (result or {}).get('error') or 'Domain audit completed without successful page scores.'
+            progress_tracker.store_result(job_id, result or {'error': message})
+            progress_tracker.complete_job(job_id, success=False, message=message)
+            logger.warning(f"Domain audit failed validation for {job_id}: {message}")
+            return
         
         # Calculate GEO score if pages are available
         if result and result.get('page_results'):
