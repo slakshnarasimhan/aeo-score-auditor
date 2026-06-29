@@ -1,0 +1,351 @@
+{
+  "enabled": true,
+  "available": true,
+  "validated_at": "2026-06-26T11:55:08.585739",
+  "domain": "https://www.aprisio.com/about",
+  "brand": "Aprisio",
+  "site_url": "https://www.aprisio.com/about",
+  "providers": [
+    {
+      "name": "openai",
+      "label": "ChatGPT / OpenAI web search",
+      "model": "gpt-4o-mini",
+      "available": true
+    },
+    {
+      "name": "gemini",
+      "label": "Gemini with Google Search grounding",
+      "model": "gemini-2.5-flash",
+      "available": false
+    },
+    {
+      "name": "perplexity",
+      "label": "Perplexity Sonar",
+      "model": "sonar-pro",
+      "available": false
+    }
+  ],
+  "summary": {
+    "questions_tested": 12,
+    "providers_tested": 1,
+    "external_visibility_score": 0.0,
+    "brand_presence_rate": 0.0,
+    "official_citation_rate": 0.0,
+    "internal_external_alignment_score": 0.0,
+    "stage_counts": {
+      "solution_discovery": {
+        "total": 6,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      },
+      "branded_validation": {
+        "total": 6,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      }
+    }
+  },
+  "questions": [
+    {
+      "prompt": "What software helps with thriving beyond midlife crisis?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 75,
+      "internal_answer_completeness_score": 64,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What tools should I use to manage thriving beyond midlife crisis?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 75,
+      "internal_answer_completeness_score": 64,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What is the best app for thriving beyond midlife crisis?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 85,
+      "internal_answer_completeness_score": 73,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What drives him?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 79,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "If you're navigating your own \"what's next?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 90,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Midlife brought reflection: after the career, the family, the milestones\u2014what comes next?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 100,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Does Aprisio show customer proof or case studies?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "trust",
+      "internal_eligibility_score": 46,
+      "internal_answer_completeness_score": 28,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Does Aprisio support reminders, tracking, or reporting?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "feature",
+      "internal_eligibility_score": 48,
+      "internal_answer_completeness_score": 30,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What features does Aprisio offer?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "feature",
+      "internal_eligibility_score": 58,
+      "internal_answer_completeness_score": 39,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What are alternatives to Aprisio?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "comparison",
+      "internal_eligibility_score": 71,
+      "internal_answer_completeness_score": 51,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Is Aprisio reliable?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "trust",
+      "internal_eligibility_score": 71,
+      "internal_answer_completeness_score": 51,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Who is Aprisio built for?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "trust",
+      "internal_eligibility_score": 71,
+      "internal_answer_completeness_score": 51,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    }
+  ],
+  "artifact_path": ""
+}

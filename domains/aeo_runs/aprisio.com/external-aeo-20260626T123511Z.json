@@ -1,0 +1,351 @@
+{
+  "enabled": true,
+  "available": true,
+  "validated_at": "2026-06-26T12:35:11.269864",
+  "domain": "https://www.aprisio.com/blogs/how-to-safely-return-to-sport-after-years-of-inactivity",
+  "brand": "Aprisio",
+  "site_url": "https://www.aprisio.com/blogs/how-to-safely-return-to-sport-after-years-of-inactivity",
+  "providers": [
+    {
+      "name": "openai",
+      "label": "ChatGPT / OpenAI web search",
+      "model": "gpt-4o-mini",
+      "available": true
+    },
+    {
+      "name": "gemini",
+      "label": "Gemini with Google Search grounding",
+      "model": "gemini-2.5-flash",
+      "available": false
+    },
+    {
+      "name": "grok",
+      "label": "Grok with xAI web search",
+      "model": "grok-4.3",
+      "available": false
+    }
+  ],
+  "summary": {
+    "questions_tested": 12,
+    "providers_tested": 1,
+    "external_visibility_score": 0.0,
+    "brand_presence_rate": 0.0,
+    "official_citation_rate": 0.0,
+    "internal_external_alignment_score": 0.0,
+    "stage_counts": {
+      "solution_discovery": {
+        "total": 7,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      },
+      "branded_validation": {
+        "total": 5,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      }
+    }
+  },
+  "questions": [
+    {
+      "prompt": "Where can I find a clear guide to returning sports midlife?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 63,
+      "internal_answer_completeness_score": 58,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What should I know about returning sports midlife?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 85,
+      "internal_answer_completeness_score": 83,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "How to Make Your Comeback Sustainable?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 97,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Why Returning to Sport Matters More Than You Think?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 100,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "How to Reconnect: Smart Ways to Restart Without Harming Yourself?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 100,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "The hesitation shows up only a moment later: Will my body handle this?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 100,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "How to Safely Return to Sport After Years of Inactivity?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 100,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Does Aprisio provide examples, data, or expert guidance?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "feature",
+      "internal_eligibility_score": 34,
+      "internal_answer_completeness_score": 11,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Who writes or reviews content on Aprisio?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "trust",
+      "internal_eligibility_score": 34,
+      "internal_answer_completeness_score": 11,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What is Aprisio?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "discovery",
+      "internal_eligibility_score": 34,
+      "internal_answer_completeness_score": 11,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What features or services does Aprisio offer?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "feature",
+      "internal_eligibility_score": 34,
+      "internal_answer_completeness_score": 11,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Is Aprisio trustworthy?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "trust",
+      "internal_eligibility_score": 34,
+      "internal_answer_completeness_score": 11,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    }
+  ],
+  "artifact_path": ""
+}

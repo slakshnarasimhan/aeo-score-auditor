@@ -1,0 +1,59 @@
+{
+  "enabled": true,
+  "available": true,
+  "validated_at": "2026-06-27T13:10:51.965291",
+  "domain": "https://example.com",
+  "brand": "Example",
+  "site_url": "https://example.com",
+  "providers": [
+    {
+      "name": "ollama",
+      "label": "Ollama answer-engine simulation",
+      "model": "glm-5.2",
+      "available": true
+    }
+  ],
+  "summary": {
+    "questions_tested": 1,
+    "providers_tested": 1,
+    "external_visibility_score": 70.0,
+    "brand_presence_rate": 100.0,
+    "official_citation_rate": 0.0,
+    "internal_external_alignment_score": 80.0,
+    "stage_counts": {
+      "unknown": {
+        "total": 1,
+        "external_visibility_score": 70.0,
+        "brand_presence_rate": 100.0
+      }
+    }
+  },
+  "questions": [
+    {
+      "prompt": "What does Example provide?",
+      "journey_stage": null,
+      "journey_label": null,
+      "intent": "trust",
+      "internal_eligibility_score": 50,
+      "internal_answer_completeness_score": 50,
+      "providers": [
+        {
+          "provider": "ollama",
+          "model": "glm-5.2",
+          "available": true,
+          "answer": "Example.com is a reserved domain name set aside by the Internet Assigned Numbers Authority (IANA) for use in documentation, examples, and testing. It is not associated with any real company, product, or service, and therefore does not actually provide anything. It is commonly used as a placeholder in technical writing and sample code.",
+          "citations": [],
+          "visibility_score": 70,
+          "brand_mentioned": true,
+          "official_site_cited": false,
+          "citation_count": 0
+        }
+      ],
+      "external_visibility_score": 70.0,
+      "brand_presence_rate": 100.0,
+      "official_citation_rate": 0.0,
+      "internal_external_alignment_score": 80.0
+    }
+  ],
+  "artifact_path": ""
+}

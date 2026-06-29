@@ -641,17 +641,17 @@ class PDFReportGenerator:
         analysis = audit_result.get("external_aeo_analysis", {})
         summary = analysis.get("summary", {})
 
-        story.append(Paragraph("EXTERNAL AEO VALIDATION", self.styles["ChapterKicker"]))
+        story.append(Paragraph("OLLAMA AEO VALIDATION", self.styles["ChapterKicker"]))
         story.append(Paragraph("Collective Answer-Engine Visibility", self.styles["ChapterTitle"]))
         story.append(Paragraph(
-            "The generated questions were asked to configured external answer engines and "
+            "The generated questions were asked to the configured Ollama validator and "
             "compared with the local website-readiness estimate.",
             self.styles["ChapterSubtitle"],
         ))
 
         if not analysis.get("available", False):
             story.append(Paragraph(
-                analysis.get("reason", "External validation was enabled, but no provider was available."),
+                analysis.get("reason", "Validation was enabled, but no Ollama provider was available."),
                 ParagraphStyle(name="ExternalUnavailable", parent=self.styles["BodyText"], textColor=STONE_600),
             ))
             return
@@ -665,7 +665,7 @@ class PDFReportGenerator:
         ))
         story.append(Paragraph(
             f'{summary.get("questions_tested", 0)} questions tested across '
-            f'{summary.get("providers_tested", 0)} providers.',
+            f'{summary.get("providers_tested", 0)} Ollama provider(s).',
             ParagraphStyle(name="ExternalMeta", parent=self.styles["BodyText"], fontSize=8, textColor=STONE_600),
         ))
         story.append(Spacer(1, 0.14 * inch))

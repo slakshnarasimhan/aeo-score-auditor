@@ -1,0 +1,356 @@
+{
+  "enabled": true,
+  "available": true,
+  "validated_at": "2026-06-27T02:12:25.790203",
+  "domain": "https://www.moative.com/voice-ai/",
+  "brand": "Moative",
+  "site_url": "https://www.moative.com/voice-ai/",
+  "providers": [
+    {
+      "name": "openai",
+      "label": "ChatGPT / OpenAI web search",
+      "model": "gpt-4o-mini",
+      "available": true
+    },
+    {
+      "name": "gemini",
+      "label": "Gemini with Google Search grounding",
+      "model": "gemini-2.5-flash",
+      "available": false
+    },
+    {
+      "name": "grok",
+      "label": "Grok with xAI web search",
+      "model": "grok-4.3",
+      "available": false
+    }
+  ],
+  "summary": {
+    "questions_tested": 12,
+    "providers_tested": 1,
+    "external_visibility_score": 0.0,
+    "brand_presence_rate": 0.0,
+    "official_citation_rate": 0.0,
+    "internal_external_alignment_score": 0.0,
+    "stage_counts": {
+      "solution_discovery": {
+        "total": 8,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      },
+      "use_case_fit": {
+        "total": 2,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      },
+      "provider_comparison": {
+        "total": 2,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      }
+    }
+  },
+  "questions": [
+    {
+      "prompt": "Which lisa voice ai built production brands or sellers are reliable?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "trust",
+      "internal_eligibility_score": 68,
+      "internal_answer_completeness_score": 57,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What warranty or support should I expect for lisa voice ai built production?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "trust",
+      "internal_eligibility_score": 68,
+      "internal_answer_completeness_score": 57,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What should I check before buying Lisa \u2014 voice AI built for production?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 78,
+      "internal_answer_completeness_score": 57,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What should I know before buying lisa voice ai built production?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 78,
+      "internal_answer_completeness_score": 57,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Which lisa voice ai built production options are best for my home?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 75,
+      "internal_answer_completeness_score": 64,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What should I look for before buying lisa voice ai built production?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 78,
+      "internal_answer_completeness_score": 57,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "More questions?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 89,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Tests that pass on \"Please enter your phone number\" still pass on \"Could you provide your contact number?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 100,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What product details, pricing, and availability should I check for lisa voice ai built production?",
+      "journey_stage": "use_case_fit",
+      "journey_label": "Use-Case Fit",
+      "intent": "feature",
+      "internal_eligibility_score": 67,
+      "internal_answer_completeness_score": 49,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Can I find reviews or proof before choosing lisa voice ai built production?",
+      "journey_stage": "use_case_fit",
+      "journey_label": "Use-Case Fit",
+      "intent": "feature",
+      "internal_eligibility_score": 67,
+      "internal_answer_completeness_score": 48,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "How do different lisa voice ai built production options compare?",
+      "journey_stage": "provider_comparison",
+      "journey_label": "Provider Comparison",
+      "intent": "comparison",
+      "internal_eligibility_score": 68,
+      "internal_answer_completeness_score": 57,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Which lisa voice ai built production options offer the best value?",
+      "journey_stage": "provider_comparison",
+      "journey_label": "Provider Comparison",
+      "intent": "comparison",
+      "internal_eligibility_score": 68,
+      "internal_answer_completeness_score": 57,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    }
+  ],
+  "artifact_path": ""
+}

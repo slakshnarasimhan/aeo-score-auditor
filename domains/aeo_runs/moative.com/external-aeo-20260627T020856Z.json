@@ -1,0 +1,351 @@
+{
+  "enabled": true,
+  "available": true,
+  "validated_at": "2026-06-27T02:08:56.013695",
+  "domain": "https://www.moative.com/foundry/",
+  "brand": "Moative",
+  "site_url": "https://www.moative.com/foundry/",
+  "providers": [
+    {
+      "name": "openai",
+      "label": "ChatGPT / OpenAI web search",
+      "model": "gpt-4o-mini",
+      "available": true
+    },
+    {
+      "name": "gemini",
+      "label": "Gemini with Google Search grounding",
+      "model": "gemini-2.5-flash",
+      "available": false
+    },
+    {
+      "name": "grok",
+      "label": "Grok with xAI web search",
+      "model": "grok-4.3",
+      "available": false
+    }
+  ],
+  "summary": {
+    "questions_tested": 12,
+    "providers_tested": 1,
+    "external_visibility_score": 0.0,
+    "brand_presence_rate": 0.0,
+    "official_citation_rate": 0.0,
+    "internal_external_alignment_score": 0.0,
+    "stage_counts": {
+      "solution_discovery": {
+        "total": 5,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      },
+      "branded_validation": {
+        "total": 7,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      }
+    }
+  },
+  "questions": [
+    {
+      "prompt": "What tools should I use to manage foundry venture vehicle midmarket operators?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 78,
+      "internal_answer_completeness_score": 70,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What software helps with foundry venture vehicle midmarket operators?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 89,
+      "internal_answer_completeness_score": 70,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What is the best app for foundry venture vehicle midmarket operators?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 87,
+      "internal_answer_completeness_score": 78,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Is the Foundry for you?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 90,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "See the operating model Is the Foundry for you?",
+      "journey_stage": "solution_discovery",
+      "journey_label": "Solution Discovery",
+      "intent": "discovery",
+      "internal_eligibility_score": 100,
+      "internal_answer_completeness_score": 100,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Does Moative show customer proof or case studies?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "trust",
+      "internal_eligibility_score": 46,
+      "internal_answer_completeness_score": 28,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Does Moative support reminders, tracking, or reporting?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "feature",
+      "internal_eligibility_score": 48,
+      "internal_answer_completeness_score": 30,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What features does Moative offer?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "feature",
+      "internal_eligibility_score": 58,
+      "internal_answer_completeness_score": 39,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "What are alternatives to Moative?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "comparison",
+      "internal_eligibility_score": 71,
+      "internal_answer_completeness_score": 51,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Is Moative reliable?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "trust",
+      "internal_eligibility_score": 71,
+      "internal_answer_completeness_score": 51,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "How does Moative compare with other foundry venture vehicle midmarket operators tools?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "comparison",
+      "internal_eligibility_score": 83,
+      "internal_answer_completeness_score": 66,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    },
+    {
+      "prompt": "Can Moative help users manage foundry venture vehicle midmarket operators?",
+      "journey_stage": "branded_validation",
+      "journey_label": "Branded Validation",
+      "intent": "feature",
+      "internal_eligibility_score": 83,
+      "internal_answer_completeness_score": 66,
+      "providers": [
+        {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "available": false,
+          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    }
+  ],
+  "artifact_path": ""
+}

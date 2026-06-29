@@ -7,9 +7,9 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
-from urllib.error import HTTPError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+
+from reporting.llm_client import JSONLLMClient
 
 try:
     from loguru import logger
@@ -17,16 +17,6 @@ except Exception:
     import logging
 
     logger = logging.getLogger(__name__)
-
-
-def _openai_disabled() -> bool:
-    return os.getenv("DISABLE_OPENAI", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_ROOT = Path(os.getenv("AEO_DATA_DIR", REPO_ROOT / "domains")).expanduser()
@@ -36,17 +26,20 @@ AEO_RUN_ROOT = DATA_ROOT / "aeo_runs"
 class ExternalAEOValidator:
     """Ask generated questions to external answer engines and score visibility."""
 
-    PROVIDERS = ("openai", "gemini", "grok")
+    PROVIDERS = ("ollama",)
 
     def __init__(self, providers: List[str] | None = None, max_questions: int | None = None):
-        enabled = providers or _env_list("EXTERNAL_AEO_PROVIDERS") or list(self.PROVIDERS)
-        if _openai_disabled():
-            enabled = [provider for provider in enabled if provider != "openai"]
-        self.providers = [item for item in enabled if item in self.PROVIDERS]
+        self.providers = ["ollama"]
         self.max_questions = max_questions or int(os.getenv("EXTERNAL_AEO_MAX_QUESTIONS", "12"))
-        self.openai_model = os.getenv("EXTERNAL_AEO_OPENAI_MODEL", "gpt-4o-mini")
-        self.gemini_model = os.getenv("EXTERNAL_AEO_GEMINI_MODEL", "gemini-2.5-flash")
-        self.grok_model = os.getenv("EXTERNAL_AEO_GROK_MODEL", "grok-4.3")
+        self.ollama_model = os.getenv(
+            "EXTERNAL_AEO_OLLAMA_MODEL",
+            os.getenv("PROMPT_EVAL_MODEL", "ollama:glm-5.2"),
+        )
+        self.ollama_client = JSONLLMClient(
+            self.ollama_model,
+            "gpt-4o-mini",
+            os.getenv("OLLAMA_VALIDATOR_MODEL", "glm-5.2"),
+        )
 
     def validate(
         self,
@@ -146,20 +139,10 @@ class ExternalAEOValidator:
 
     def _provider_meta(self) -> Dict[str, Dict[str, Any]]:
         return {
-            "openai": {
-                "label": "ChatGPT / OpenAI web search",
-                "model": self.openai_model,
-                "available": bool(os.getenv("OPENAI_API_KEY")) and not _openai_disabled(),
-            },
-            "gemini": {
-                "label": "Gemini with Google Search grounding",
-                "model": self.gemini_model,
-                "available": bool(os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")),
-            },
-            "grok": {
-                "label": "Grok with xAI web search",
-                "model": self.grok_model,
-                "available": bool(_xai_api_key()),
+            "ollama": {
+                "label": "Ollama answer-engine simulation",
+                "model": self.ollama_client.model,
+                "available": self.ollama_client.available,
             },
         }
 
@@ -172,17 +155,10 @@ class ExternalAEOValidator:
         site_context: Dict[str, Any],
     ) -> Dict[str, Any]:
         try:
-            if provider == "openai":
-                answer, citations = self._ask_openai(question, brand, site_url, site_context)
-                model = self.openai_model
-            elif provider == "gemini":
-                answer, citations = self._ask_gemini(question, brand, site_url, site_context)
-                model = self.gemini_model
-            elif provider == "grok":
-                answer, citations = self._ask_grok(question, brand, site_url, site_context)
-                model = self.grok_model
-            else:
+            if provider != "ollama":
                 raise ValueError(f"Unsupported provider: {provider}")
+            answer, citations = self._ask_ollama(question, brand, site_url, site_context)
+            model = self.ollama_client.model
 
             scores = _score_answer(answer, citations, brand, _host(site_url))
             return {
@@ -207,89 +183,43 @@ class ExternalAEOValidator:
                 "official_site_cited": False,
             }
 
-    def _ask_openai(
+    def _ask_ollama(
         self,
         question: str,
         brand: str,
         site_url: str,
         site_context: Dict[str, Any],
     ) -> tuple[str, List[Dict[str, str]]]:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is not configured")
-        payload = {
-            "model": self.openai_model,
-            "tools": [{"type": "web_search_preview"}],
-            "input": _provider_prompt(question, brand, site_url, site_context),
-        }
-        data = _post_json(
-            "https://api.openai.com/v1/responses",
-            payload,
-            {"Authorization": f"Bearer {api_key}"},
-            timeout=120,
-        )
-        answer = data.get("output_text") or _extract_response_text(data)
-        citations = _extract_openai_citations(data)
-        return answer, citations
+        if not self.ollama_client.available:
+            raise RuntimeError("Ollama model provider is not available")
 
-    def _ask_gemini(
-        self,
-        question: str,
-        brand: str,
-        site_url: str,
-        site_context: Dict[str, Any],
-    ) -> tuple[str, List[Dict[str, str]]]:
-        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GOOGLE_API_KEY or GEMINI_API_KEY is not configured")
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.gemini_model}:generateContent?key={api_key}"
+        payload = self.ollama_client.generate_json(
+            (
+                "You simulate an answer engine for AEO validation. Return only JSON. "
+                "Answer naturally from the supplied question and context. Do not invent "
+                "web citations."
+            ),
+            (
+                _provider_prompt(question, brand, site_url, site_context)
+                + "\n\nReturn JSON with keys: answer (string), citations "
+                "(array of objects with url and title; use [] unless the official website "
+                "is directly relevant and named in your answer)."
+            ),
+            temperature=0.1,
         )
-        payload = {
-            "contents": [{
-                "role": "user",
-                "parts": [{"text": _provider_prompt(question, brand, site_url, site_context)}],
-            }],
-            "tools": [{"google_search": {}}],
-            "generationConfig": {"temperature": 0.1},
-        }
-        data = _post_json(url, payload, {}, timeout=120)
-        candidate = (data.get("candidates") or [{}])[0]
-        parts = ((candidate.get("content") or {}).get("parts") or [])
-        answer = "\n".join(part.get("text", "") for part in parts if part.get("text")).strip()
-        citations = _extract_gemini_citations(candidate)
-        return answer, citations
-
-    def _ask_grok(
-        self,
-        question: str,
-        brand: str,
-        site_url: str,
-        site_context: Dict[str, Any],
-    ) -> tuple[str, List[Dict[str, str]]]:
-        api_key = _xai_api_key()
-        if not api_key:
-            raise RuntimeError("XAI_API_KEY or GROK_API_KEY is not configured")
-        payload = {
-            "model": self.grok_model,
-            "input": [
-                {
-                    "role": "user",
-                    "content": _provider_prompt(question, brand, site_url, site_context),
-                }
-            ],
-            "tools": [{"type": "web_search"}],
-        }
-        data = _post_json(
-            "https://api.x.ai/v1/responses",
-            payload,
-            {"Authorization": f"Bearer {api_key}"},
-            timeout=180,
-        )
-        answer = data.get("output_text") or _extract_response_text(data)
-        citations = _extract_xai_citations(data)
-        return answer, citations
+        answer = str(payload.get("answer", "")).strip()
+        citations = payload.get("citations", [])
+        if not isinstance(citations, list):
+            citations = []
+        normalized = [
+            {
+                "url": str(item.get("url", "")).strip(),
+                "title": str(item.get("title", "")).strip(),
+            }
+            for item in citations
+            if isinstance(item, dict) and item.get("url")
+        ]
+        return answer, normalized
 
     def _score_question(
         self,
@@ -431,74 +361,6 @@ def _score_answer(
     }
 
 
-def _post_json(
-    url: str,
-    payload: Dict[str, Any],
-    headers: Dict[str, str],
-    timeout: int = 60,
-) -> Dict[str, Any]:
-    request_headers = {"Content-Type": "application/json", **headers}
-    request = Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers=request_headers,
-    )
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            data = json.load(response)
-    except HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {e.code}: {body[:300]}")
-    return data if isinstance(data, dict) else {}
-
-
-def _extract_response_text(data: Dict[str, Any]) -> str:
-    chunks: List[str] = []
-    for item in data.get("output", []):
-        for content in item.get("content", []):
-            if content.get("text"):
-                chunks.append(content["text"])
-    return "\n".join(chunks).strip()
-
-
-def _extract_openai_citations(data: Dict[str, Any]) -> List[Dict[str, str]]:
-    citations: List[Dict[str, str]] = []
-    for item in data.get("output", []):
-        for content in item.get("content", []):
-            for annotation in content.get("annotations", []):
-                url = annotation.get("url")
-                if url:
-                    citations.append({"url": url, "title": annotation.get("title", "")})
-    return citations
-
-
-def _extract_xai_citations(data: Dict[str, Any]) -> List[Dict[str, str]]:
-    citations: List[Dict[str, str]] = []
-    for url in data.get("citations", []) or []:
-        if isinstance(url, str):
-            citations.append({"url": url, "title": ""})
-    citations.extend(_extract_openai_citations(data))
-    seen = set()
-    unique = []
-    for citation in citations:
-        url = citation.get("url")
-        if url and url not in seen:
-            seen.add(url)
-            unique.append(citation)
-    return unique
-
-
-def _extract_gemini_citations(candidate: Dict[str, Any]) -> List[Dict[str, str]]:
-    metadata = candidate.get("groundingMetadata") or {}
-    citations: List[Dict[str, str]] = []
-    for chunk in metadata.get("groundingChunks", []):
-        web = chunk.get("web") or {}
-        uri = web.get("uri")
-        if uri:
-            citations.append({"url": uri, "title": web.get("title", "")})
-    return citations
-
-
 def _normal_site_url(value: str) -> str:
     if not value:
         return ""
@@ -520,15 +382,6 @@ def _brand_from_domain(value: str) -> str:
 def _safe_name(value: str) -> str:
     cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "-", value).strip("-._")
     return cleaned or "site"
-
-
-def _env_list(name: str) -> List[str]:
-    raw = os.getenv(name, "")
-    return [item.strip().lower() for item in raw.split(",") if item.strip()]
-
-
-def _xai_api_key() -> str:
-    return os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY") or ""
 
 
 def _avg(values: List[float | int]) -> float:

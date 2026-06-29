@@ -23,8 +23,12 @@ def parse_model_spec(
     if spec.startswith("ollama:"):
         return "ollama", spec.removeprefix("ollama:")
     if spec.startswith("openai:"):
+        if openai_disabled():
+            return "disabled", spec.removeprefix("openai:")
         return "openai", spec.removeprefix("openai:")
     if spec and spec != "auto":
+        if openai_disabled():
+            return "disabled", spec
         return "openai", spec
     if os.getenv("OLLAMA_KEY") or os.getenv("OLLAMA_API_KEY"):
         return "ollama", (
@@ -142,7 +146,24 @@ class JSONLLMClient:
             )
             content = response.choices[0].message.content or "{}"
 
-        parsed = json.loads(content)
+        parsed = _parse_json_object(content)
         if not isinstance(parsed, dict):
             raise ValueError("Model response was not a JSON object")
+        return parsed
+
+
+def _parse_json_object(content: str) -> Dict[str, Any]:
+    text = (content or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`").strip()
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find("{")
+        if start < 0:
+            raise
+        decoder = json.JSONDecoder()
+        parsed, _ = decoder.raw_decode(text[start:])
         return parsed

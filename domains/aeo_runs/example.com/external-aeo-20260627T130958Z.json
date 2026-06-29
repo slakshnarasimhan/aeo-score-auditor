@@ -1,0 +1,59 @@
+{
+  "enabled": true,
+  "available": true,
+  "validated_at": "2026-06-27T13:09:58.865199",
+  "domain": "https://example.com",
+  "brand": "Example",
+  "site_url": "https://example.com",
+  "providers": [
+    {
+      "name": "ollama",
+      "label": "Ollama answer-engine simulation",
+      "model": "glm-5.2",
+      "available": true
+    }
+  ],
+  "summary": {
+    "questions_tested": 1,
+    "providers_tested": 1,
+    "external_visibility_score": 0.0,
+    "brand_presence_rate": 0.0,
+    "official_citation_rate": 0.0,
+    "internal_external_alignment_score": 0.0,
+    "stage_counts": {
+      "unknown": {
+        "total": 1,
+        "external_visibility_score": 0.0,
+        "brand_presence_rate": 0.0
+      }
+    }
+  },
+  "questions": [
+    {
+      "prompt": "What does Example provide?",
+      "journey_stage": null,
+      "journey_label": null,
+      "intent": "trust",
+      "internal_eligibility_score": 50,
+      "internal_answer_completeness_score": 50,
+      "providers": [
+        {
+          "provider": "ollama",
+          "model": "glm-5.2",
+          "available": false,
+          "error": "Expecting value: line 1 column 1 (char 0)",
+          "answer": "",
+          "citations": [],
+          "visibility_score": 0,
+          "brand_mentioned": false,
+          "official_site_cited": false
+        }
+      ],
+      "external_visibility_score": 0,
+      "brand_presence_rate": 0,
+      "official_citation_rate": 0,
+      "internal_external_alignment_score": 0
+    }
+  ],
+  "artifact_path": ""
+}

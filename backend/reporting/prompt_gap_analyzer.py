@@ -195,7 +195,7 @@ class PromptGapAnalyzer:
         results = [self._score_prompt(prompt, chunks, brand) for prompt in prompt_defs]
         llm_evaluation = {
             "enabled": False,
-            "provider": "openai",
+            "provider": "deterministic",
             "reason": "LLM evaluation was not requested",
         }
 

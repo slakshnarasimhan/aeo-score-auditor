@@ -1,0 +1,10 @@
+{
+  "brand": "BetterHome",
+  "entity_type": "ecommerce_store",
+  "offers": ["home appliances", "ceiling fans", "water heaters"],
+  "audience": ["homeowners", "local appliance buyers"],
+  "market_scope": "local",
+  "locations": ["Chennai"],
+  "prompt_subject": "products sold on BetterHome",
+  "avoid_prompts_about": ["BetterHome pricing", "BetterHome subscription cost"]
+}

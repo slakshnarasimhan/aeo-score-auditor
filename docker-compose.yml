@@ -44,6 +44,11 @@ services:
       - OLLAMA_BASE_URL=https://ollama.com
       - OLLAMA_DOMAIN_MODEL=gpt-oss:20b
       - OLLAMA_STRATEGY_MODEL=qwen3.5:397b
+      - OLLAMA_VALIDATOR_MODEL=glm-5.2
+      - PROMPT_EVAL_MODEL=ollama:glm-5.2
+      - EXTERNAL_AEO_PROVIDERS=ollama
+      - DISABLE_OPENAI=true
+      - OLLAMA_REQUEST_TIMEOUT=90
       # Fetcher mode: 'hybrid' (default), 'playwright' (always JS), or 'http' (fast, no JS)
       - FETCHER_MODE=hybrid
     env_file:
@@ -77,6 +82,11 @@ services:
       - OLLAMA_BASE_URL=https://ollama.com
       - OLLAMA_DOMAIN_MODEL=gpt-oss:20b
       - OLLAMA_STRATEGY_MODEL=qwen3.5:397b
+      - OLLAMA_VALIDATOR_MODEL=glm-5.2
+      - PROMPT_EVAL_MODEL=ollama:glm-5.2
+      - EXTERNAL_AEO_PROVIDERS=ollama
+      - DISABLE_OPENAI=true
+      - OLLAMA_REQUEST_TIMEOUT=90
       # Fetcher mode: 'hybrid' (default), 'playwright' (always JS), or 'http' (fast, no JS)
       - FETCHER_MODE=hybrid
     env_file:

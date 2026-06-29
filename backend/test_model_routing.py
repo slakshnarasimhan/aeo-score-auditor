@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import patch
 
-from reporting.llm_client import parse_model_spec
+from reporting.llm_client import _parse_json_object, parse_model_spec
+from reporting.external_aeo_validator import ExternalAEOValidator
 from reporting.llm_prompt_evaluator import LLMPromptEvaluator
 
 
@@ -50,6 +51,21 @@ class ModelRoutingTests(unittest.TestCase):
                 parse_model_spec("auto", "gpt-4o-mini"),
                 ("disabled", "gpt-4o-mini"),
             )
+
+    def test_external_aeo_validation_is_ollama_only(self):
+        with patch.dict("os.environ", {"OLLAMA_KEY": "test"}, clear=True):
+            validator = ExternalAEOValidator(providers=["openai", "gemini"])
+            self.assertEqual(validator.providers, ["ollama"])
+
+    def test_json_parser_extracts_object_from_model_wrapper(self):
+        self.assertEqual(
+            _parse_json_object('```json\\n{"answer": "ok"}\\n```'),
+            {"answer": "ok"},
+        )
+        self.assertEqual(
+            _parse_json_object('</think> {"answer": "ok"} extra text'),
+            {"answer": "ok"},
+        )
 
     def test_answerability_results_are_evaluated_in_one_batch(self):
         evaluator = LLMPromptEvaluator.__new__(LLMPromptEvaluator)

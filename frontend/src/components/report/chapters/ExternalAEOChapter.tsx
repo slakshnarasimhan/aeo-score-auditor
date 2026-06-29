@@ -7,9 +7,7 @@ interface ExternalAEOChapterProps {
 }
 
 const providerLabels: Record<string, string> = {
-  openai: 'OpenAI',
-  gemini: 'Gemini',
-  grok: 'Grok',
+  ollama: 'Ollama',
 };
 
 function ScoreTile({
@@ -36,6 +34,8 @@ function ScoreTile({
 }
 
 function QuestionBlock({ question }: { question: ExternalAEOQuestionResult }) {
+  const providers = question.providers.filter((provider) => provider.provider !== 'openai');
+
   return (
     <div className="border-b border-stone-100 py-4 last:border-b-0">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -58,7 +58,7 @@ function QuestionBlock({ question }: { question: ExternalAEOQuestionResult }) {
       </div>
 
       <div className="mt-3 grid gap-3">
-        {question.providers.map((provider) => (
+        {providers.map((provider) => (
           <div key={provider.provider} className="rounded-lg border border-stone-200 bg-stone-50 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-bold uppercase tracking-wider text-stone-600">
@@ -100,19 +100,19 @@ export function ExternalAEOChapter({ analysis }: ExternalAEOChapterProps) {
   return (
     <div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
-        External AEO Validation
+        Ollama AEO Validation
       </p>
       <h2 className="mb-3 font-display text-2xl font-bold text-stone-900 md:text-3xl">
         Collective Answer-Engine Visibility
       </h2>
       <p className="mb-6 text-sm leading-relaxed text-stone-600">
-        These are the same generated questions tested against configured external answer
-        engines, then compared with the local website-readiness estimate.
+        These are the same generated questions tested against the configured Ollama
+        validator, then compared with the local website-readiness estimate.
       </p>
 
       {!analysis.available && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          {analysis.reason ?? 'External answer-engine validation was enabled, but no provider was available.'}
+          {analysis.reason ?? 'Answer-engine validation was enabled, but no Ollama provider was available.'}
         </div>
       )}
 
@@ -124,7 +124,7 @@ export function ExternalAEOChapter({ analysis }: ExternalAEOChapterProps) {
       </div>
 
       <div className="mb-6 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-600">
-        {summary.questions_tested} questions tested across {summary.providers_tested} providers.
+        {summary.questions_tested} questions tested across {summary.providers_tested} Ollama provider{summary.providers_tested === 1 ? '' : 's'}.
         {analysis.artifact_path ? ` Saved to ${analysis.artifact_path}.` : ''}
       </div>
 

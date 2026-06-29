@@ -19,7 +19,7 @@ interface ProgressUpdate {
 interface AnalysisModelOption {
   value: string;
   label: string;
-  provider: 'auto' | 'openai' | 'ollama';
+  provider: 'auto' | 'ollama';
   available: boolean;
   size?: number;
 }

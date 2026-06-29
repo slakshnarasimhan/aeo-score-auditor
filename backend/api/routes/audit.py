@@ -20,7 +20,7 @@ class AuditOptions(BaseModel):
     """Audit configuration options"""
     include_ai_citation: bool = True
     ai_prompt_count: int = 20
-    ai_engines: List[str] = ["gpt4", "gemini", "perplexity"]
+    ai_engines: List[str] = ["ollama"]
     wait_for_completion: bool = False
     priority: str = "normal"
     calculate_geo: bool = True  # Include GEO score in domain audits
@@ -28,7 +28,7 @@ class AuditOptions(BaseModel):
     llm_prompt_eval: bool = False  # Use an LLM to judge prompt answerability from local evidence
     site_context: Optional[Dict[str, Any]] = None  # Supplemental positioning context for this website
     use_local_crawl: bool = False  # Re-score from persisted crawl data without fetching pages
-    skip_domain_intelligence: bool = False  # Skip OpenAI/domain preflight for domain audits
+    skip_domain_intelligence: bool = False  # Skip LLM/domain preflight for domain audits
     use_cached_domain_intelligence: bool = False  # Reuse domains/intelligence/<domain>.json when available
     domain_intelligence_model: str = "auto"
     strategy_model: str = "auto"
@@ -71,15 +71,6 @@ async def list_analysis_models():
         "provider": "auto",
         "available": True,
     }]
-    openai_model = os.getenv("DOMAIN_INTELLIGENCE_MODEL", "gpt-4o-mini")
-    if os.getenv("OPENAI_API_KEY"):
-        models.append({
-            "value": f"openai:{openai_model}",
-            "label": f"{openai_model} (OpenAI)",
-            "provider": "openai",
-            "available": True,
-        })
-
     if ollama_key:
         base_url = os.getenv("OLLAMA_BASE_URL", "https://ollama.com").rstrip("/")
         try:
