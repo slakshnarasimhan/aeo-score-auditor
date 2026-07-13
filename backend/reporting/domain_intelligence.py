@@ -574,6 +574,15 @@ def prioritize_urls_with_intelligence(
 
 def load_domain_intelligence(domain_url: str) -> Dict[str, Any]:
     path = _intelligence_path(domain_url)
+    return _load_intelligence_file(domain_url, path)
+
+
+def load_domain_strategy(domain_url: str) -> Dict[str, Any]:
+    path = INTELLIGENCE_ROOT / f"{_domain_key(domain_url)}.strategy.json"
+    return _load_intelligence_file(domain_url, path)
+
+
+def _load_intelligence_file(domain_url: str, path: Path) -> Dict[str, Any]:
     if not path.exists():
         return {}
     try:

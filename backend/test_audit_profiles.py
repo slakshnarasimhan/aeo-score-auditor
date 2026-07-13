@@ -402,6 +402,137 @@ class AuditProfileTests(unittest.TestCase):
         self.assertEqual(prompts[0]["source"], "question_strategy")
         self.assertIn("How is midlife coaching different from therapy?", [p["prompt"] for p in prompts])
 
+    def test_content_derived_prompt_filter_rejects_cta_and_chart_fragments(self):
+        pages = [{
+            "url": "https://moative.com/guild",
+            "prompt_evidence": {
+                "title": "Moative Guild - AI operating partner",
+                "meta_description": "Co-own AI products with operators in insurance and healthcare workflows.",
+                "headings": [
+                    "Where this sits in the $84B pool",
+                    "Sound like your industry?",
+                    "Which vehicle fits?",
+                    "How can bordereaux analytics improve MGA portfolio pricing?",
+                ],
+                "questions": [
+                    {"question": "When do I get paid?", "answer": "Quarterly distributions."},
+                    {
+                        "question": "Become a founding Guild member Ask for the Charter Frequently asked questions Do I need any technical skills?",
+                        "answer": "No.",
+                    },
+                    {
+                        "question": "What portfolio optimization opportunities does bordereaux analytics reveal?",
+                        "answer": "It surfaces class-level margins and geographic performance trends.",
+                    },
+                ],
+                "paragraphs": [
+                    "Moative builds AI operating partnerships for insurance, healthcare, legal, and energy workflows."
+                ],
+            },
+        }]
+
+        analysis = PromptGapAnalyzer().analyze(
+            pages,
+            "https://moative.com",
+            {"type": "general"},
+            max_prompts=12,
+            site_context={
+                "brand": "Moative",
+                "offers": ["AI operating partner", "bordereaux analytics"],
+                "business_type": "equity-based AI joint ventures",
+            },
+        )
+        prompts = [item["prompt"] for item in analysis["prompts"]]
+
+        self.assertNotIn("Where this sits in the $84B pool?", prompts)
+        self.assertNotIn("Sound like your industry?", prompts)
+        self.assertNotIn("Which vehicle fits?", prompts)
+        self.assertNotIn("When do I get paid?", prompts)
+        self.assertFalse(any("Become a founding Guild member" in prompt for prompt in prompts))
+        self.assertIn(
+            "What portfolio optimization opportunities does bordereaux analytics reveal?",
+            prompts,
+        )
+        relevant = next(
+            item for item in analysis["prompts"]
+            if item["prompt"] == "What portfolio optimization opportunities does bordereaux analytics reveal?"
+        )
+        self.assertEqual(relevant["source"], "content_question")
+
+    def test_geo_eligibility_questions_use_section_evidence_across_pages(self):
+        prompt = "Does Climate Collective support founders outside of India, and which countries are eligible?"
+        pages = [
+            {
+                "url": "https://climatecollective.net/about/",
+                "prompt_evidence": {
+                    "title": "About-Us - ClimateCollective",
+                    "headings": [
+                        "Today Climate Collective is a dynamic team of 50+ driven individuals, who daily build platforms that support climate tech entrepreneurs in the early perilous stages of the startup journey."
+                    ],
+                    "paragraphs": [
+                        "The program grows to 4 more states and Sri Lanka in 2018.",
+                        "Climate Collective builds follow-on accelerators and pre-accelerators and boards over 470+ cleantech startups of India and South Asia.",
+                    ],
+                },
+            },
+            {
+                "url": "https://climatecollective.net/sup-challenge/",
+                "prompt_evidence": {
+                    "title": "SUP Challenge - ClimateCollective",
+                    "headings": [
+                        "Eligibility",
+                        "Startups who are based and operating in India",
+                        "Startups who can pilot their solutions in Goa",
+                    ],
+                    "paragraphs": [
+                        "The Single-Use Plastic Challenge is an international acceleration program.",
+                        "Eight Entrepreneur Support Organizations were selected to run The SUP Challenges with F&B partners in five countries, i.e. India, Philippines, Thailand, Vietnam, and Indonesia. Climate Collective Foundation is implementing partner in Goa, India.",
+                    ],
+                },
+            },
+            {
+                "url": "https://climatecollective.net/act4green-ii/",
+                "prompt_evidence": {
+                    "title": "Act4Green II",
+                    "paragraphs": [
+                        "The program will support 12 promising AI or Big Data focused startups from India and UK working on climate tech solutions.",
+                        "Climate Collective Foundation and partners strengthen the Indian and UK climate tech start-up ecosystems.",
+                    ],
+                },
+            },
+            {
+                "url": "https://climatecollective.net/impactmetrics/case-studies/",
+                "prompt_evidence": {
+                    "title": "Case Studies - ClimateCollective",
+                    "paragraphs": [
+                        "New Energy Nexus is a network of accelerators and funds supporting clean energy entrepreneurship. They have supported startups in Philippines, Indonesia, Vietnam, California, and India.",
+                    ],
+                },
+            },
+        ]
+
+        analysis = PromptGapAnalyzer().analyze(
+            pages,
+            "https://climatecollective.net",
+            {"type": "general"},
+            max_prompts=1,
+            site_context={
+                "brand": "Climate Collective",
+                "question_strategy": {
+                    "branded_validation_questions": [prompt],
+                },
+            },
+        )
+
+        result = analysis["prompts"][0]
+        evidence_urls = [item["url"] for item in result["evidence"]]
+
+        self.assertEqual(result["coverage"], "partial")
+        self.assertIn("https://climatecollective.net/sup-challenge/", evidence_urls)
+        self.assertIn("https://climatecollective.net/about/", evidence_urls)
+        self.assertIn("https://climatecollective.net/act4green-ii/", evidence_urls)
+        self.assertNotIn("https://climatecollective.net/impactmetrics/case-studies/", evidence_urls)
+
     def test_sparse_domain_intelligence_does_not_inject_generic_questions(self):
         intelligence = {
             "brand_guess": "Saavigen",

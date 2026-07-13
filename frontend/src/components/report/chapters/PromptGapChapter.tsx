@@ -47,9 +47,10 @@ function inferStage(prompt: PromptGapResult, brand: string) {
 
 function PromptRow({ prompt }: { prompt: PromptGapResult }) {
   const style = coverageStyles[prompt.coverage] ?? coverageStyles.missing;
-  const evidence = prompt.evidence[0];
+  const evidenceItems = prompt.evidence.slice(0, 3);
   const eligibility = prompt.eligibility_score ?? prompt.answerability_score;
   const completeness = prompt.answer_completeness_score ?? prompt.answerability_score;
+  const answer = prompt.answer ?? prompt.llm_evaluation?.answer;
 
   return (
     <div className="py-4 border-b border-stone-100 last:border-b-0">
@@ -76,24 +77,30 @@ function PromptRow({ prompt }: { prompt: PromptGapResult }) {
       </div>
 
       <p className="mt-2 text-sm text-stone-600">{prompt.gap}</p>
-      {prompt.llm_evaluation?.answer && (
+      {answer && (
         <p className="mt-2 rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
-          {prompt.llm_evaluation.answer}
+          {answer}
         </p>
       )}
       <p className="mt-1 text-sm text-indigo-700">{prompt.recommended_fix}</p>
 
-      {evidence && (
+      {evidenceItems.length > 0 && (
         <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-            Best website evidence
+            Website evidence
           </p>
-          <p className="mt-1 text-xs text-stone-700 leading-relaxed">
-            {evidence.text}
-          </p>
-          <p className="mt-1 truncate text-[11px] text-stone-400" title={evidence.url}>
-            {evidence.url}
-          </p>
+          <div className="mt-2 space-y-2">
+            {evidenceItems.map((evidence, index) => (
+              <div key={`${evidence.url}-${index}`}>
+                <p className="text-xs text-stone-700 leading-relaxed">
+                  {evidence.text}
+                </p>
+                <p className="mt-1 truncate text-[11px] text-stone-400" title={evidence.url}>
+                  {evidence.url}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

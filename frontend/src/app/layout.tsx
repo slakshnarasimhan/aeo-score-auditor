@@ -15,8 +15,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'AEO/GEO Score Auditor',
-  description: 'Analyze and optimize content for AI-powered search engines',
+  title: 'Article to Social',
+  description: 'Convert long-form articles into review-ready social and presentation formats',
 };
 
 export default function RootLayout({

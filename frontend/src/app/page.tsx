@@ -1,773 +1,420 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { API_URL } from '../config';
-import { ReportBook } from '@/components/report/ReportBook';
-import { AuditResult, DomainAuditResult } from '@/types/audit';
+import { FormEvent, useMemo, useState } from 'react';
+import { ArrowLeft, Check, FileText, Loader2, Mail, Send, Sparkles } from 'lucide-react';
+import { FORMAT_DEFINITIONS } from '@/lib/social-agents/formats';
+import { GeneratedFormat, SocialFormat, SourceArticle } from '@/lib/social-agents/types';
 
-interface ProgressUpdate {
-  status: string;
-  current_step: string;
-  percentage: number;
-  pages_audited: number;
-  total_urls: number;
-  urls_discovered: number;
-  message: string;
-  current_url?: string;
+type Step = 'compose' | 'results';
+
+interface GenerateResponse {
+  source: SourceArticle;
+  outputs: GeneratedFormat[];
+  failures?: { format: SocialFormat; error: string }[];
+  error?: string;
 }
 
-interface AnalysisModelOption {
-  value: string;
-  label: string;
-  provider: 'auto' | 'ollama';
-  available: boolean;
-  size?: number;
-}
-
-const PROFILE_OPTIONS = [
-  { value: 'auto', label: 'Auto-detect' },
-  { value: 'ecommerce', label: 'Ecommerce' },
-  { value: 'saas_app', label: 'SaaS / App' },
-  { value: 'publisher', label: 'Publisher / Blog' },
-  { value: 'local_business', label: 'Local Business' },
-  { value: 'education', label: 'Education / Course' },
-  { value: 'documentation', label: 'Documentation' },
-  { value: 'general', label: 'General Website' },
-];
-
-const PROGRESS_STATUS: Record<string, { label: string; className: string }> = {
-  intelligence: {
-    label: 'Understanding',
-    className: 'bg-violet-200 text-violet-800',
-  },
-  discovering: {
-    label: 'Discovering',
-    className: 'bg-yellow-200 text-yellow-800',
-  },
-  auditing: {
-    label: 'Auditing',
-    className: 'bg-blue-200 text-blue-800',
-  },
-  strategy: {
-    label: 'Strategy',
-    className: 'bg-indigo-200 text-indigo-800',
-  },
-  external: {
-    label: 'External AEOs',
-    className: 'bg-emerald-200 text-emerald-800',
-  },
-  finalizing: {
-    label: 'Finalizing',
-    className: 'bg-cyan-200 text-cyan-800',
-  },
-  completed: {
-    label: 'Completed',
-    className: 'bg-green-200 text-green-800',
-  },
-  done: {
-    label: 'Completed',
-    className: 'bg-green-200 text-green-800',
-  },
-  failed: {
-    label: 'Failed',
-    className: 'bg-red-200 text-red-800',
-  },
-};
-
-function ProfileSelector({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <label htmlFor="site-profile" className="block text-sm font-semibold text-gray-800">
-            Website Profile
-          </label>
-          <p className="mt-1 text-xs text-gray-500">
-            Choose the extraction lens for recommendations, or let the auditor infer it.
-          </p>
-        </div>
-        <select
-          id="site-profile"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-64"
-          disabled={disabled}
-        >
-          {PROFILE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-function ModelSelector({
-  id,
-  title,
-  description,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  id: string;
-  title: string;
-  description: string;
-  value: string;
-  options: AnalysisModelOption[];
-  onChange: (value: string) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="mb-6 border border-gray-200 bg-gray-50 px-4 py-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <label htmlFor={id} className="block text-sm font-semibold text-gray-800">
-            {title}
-          </label>
-          <p className="mt-1 text-xs text-gray-500">
-            {description}
-          </p>
-        </div>
-        <select
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-72"
-          disabled={disabled}
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
+const DEFAULT_FORMATS: SocialFormat[] = ['linkedin', 'powerpoint', 'instagram', 'x'];
 
 export default function Home() {
-  const [url, setUrl] = useState<string>('');
-  const [domain, setDomain] = useState<string>('');
-  const [maxPages, setMaxPages] = useState<number>(100);
-  const [siteProfile, setSiteProfile] = useState<string>('auto');
-  const [llmPromptEval, setLlmPromptEval] = useState<boolean>(false);
-  const [externalAeoValidation, setExternalAeoValidation] = useState<boolean>(false);
-  const [useLocalCrawl, setUseLocalCrawl] = useState<boolean>(false);
-  const [domainIntelligenceModel, setDomainIntelligenceModel] = useState<string>('auto');
-  const [strategyModel, setStrategyModel] = useState<string>('auto');
-  const [analysisModels, setAnalysisModels] = useState<AnalysisModelOption[]>([
-    {
-      value: 'auto',
-      label: 'Automatic',
-      provider: 'auto',
-      available: true,
-    },
-  ]);
-  const [auditType, setAuditType] = useState<'page' | 'domain'>('page');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
-  const [domainResult, setDomainResult] = useState<DomainAuditResult | null>(null);
-  const [detailedPDF, setDetailedPDF] = useState<boolean>(false);
-  
-  // Progress tracking
-  const [progress, setProgress] = useState<ProgressUpdate | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const progressStatus = progress
-    ? PROGRESS_STATUS[progress.status] || {
-        label: 'Processing',
-        className: 'bg-gray-200 text-gray-800',
-      }
-    : null;
+  const [step, setStep] = useState<Step>('compose');
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [text, setText] = useState('');
+  const [selectedFormats, setSelectedFormats] = useState<SocialFormat[]>(DEFAULT_FORMATS);
+  const [source, setSource] = useState<SourceArticle | null>(null);
+  const [outputs, setOutputs] = useState<GeneratedFormat[]>([]);
+  const [activeFormat, setActiveFormat] = useState<SocialFormat>('linkedin');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
 
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/audit/models`);
-        if (!response.ok) return;
-        const data = await response.json();
-        if (Array.isArray(data.models) && data.models.length > 0) {
-          setAnalysisModels(data.models);
-          if (data.defaults?.domain_intelligence_model) {
-            setDomainIntelligenceModel(data.defaults.domain_intelligence_model);
-          }
-          if (data.defaults?.strategy_model) {
-            setStrategyModel(data.defaults.strategy_model);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load analysis models:', err);
-      }
-    };
-    loadModels();
-  }, []);
+  const activeOutput = useMemo(
+    () => outputs.find((output) => output.format === activeFormat) || outputs[0],
+    [activeFormat, outputs],
+  );
 
-  // SSE for progress tracking
-  useEffect(() => {
-    if (!jobId) return;
+  const toggleFormat = (format: SocialFormat) => {
+    setSelectedFormats((current) => (
+      current.includes(format)
+        ? current.filter((item) => item !== format)
+        : [...current, format]
+    ));
+  };
 
-    const eventSource = new EventSource(`${API_URL}/api/v1/audit/domain/progress/${jobId}`);
-    let completionTimeout: ReturnType<typeof setTimeout> | undefined;
-    let pollInterval: ReturnType<typeof setInterval> | undefined;
+  const generate = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
 
-    const stopTracking = () => {
-      eventSource.close();
-      if (completionTimeout) clearTimeout(completionTimeout);
-      if (pollInterval) clearInterval(pollInterval);
-    };
+    if (!url.trim() && !text.trim()) {
+      setError('Paste an article URL or the full article text.');
+      return;
+    }
 
-    const hasRenderableBreakdown = (result: DomainAuditResult | null | undefined) => {
-      return Boolean(result?.breakdown && Object.keys(result.breakdown).length > 0);
-    };
+    if (selectedFormats.length === 0) {
+      setError('Choose at least one output format.');
+      return;
+    }
 
-    const finishWithResult = (result: DomainAuditResult) => {
-      if (!hasRenderableBreakdown(result)) {
-        setError((result as any)?.error || 'Domain audit finished without any successful page scores.');
-        setDomainResult(null);
-        setProgress(null);
-        setLoading(false);
-        setJobId(null);
-        stopTracking();
-        return;
-      }
-      setDomainResult(result);
-      setProgress(null);
-      setLoading(false);
-      setJobId(null);
-      stopTracking();
-    };
-
-    const handleProgressData = (data: any) => {
-      console.log('Progress received:', data);
-
-      if (data.status === 'done' && data.result) {
-        finishWithResult(data.result);
-        return;
-      }
-
-      setProgress(data);
-
-      if (data.status === 'failed') {
-        setError(data.message || 'Domain audit failed.');
-        setLoading(false);
-        setJobId(null);
-        stopTracking();
-        return;
-      }
-
-      if (data.status === 'completed' && data.result) {
-        finishWithResult(data.result);
-        return;
-      }
-
-      if (data.status === 'completed') {
-        if (completionTimeout) clearTimeout(completionTimeout);
-        completionTimeout = setTimeout(async () => {
-          try {
-            const response = await fetch(`${API_URL}/api/v1/audit/domain/result/${jobId}`);
-            if (response.ok) {
-              const resultData = await response.json();
-              finishWithResult(resultData.result);
-            }
-          } catch (err) {
-            console.error('Failed to fetch completed result:', err);
-          }
-        }, 1000);
-      }
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleProgressData(data);
-      } catch (e) {
-        console.error('Failed to parse SSE data:', e, 'Event data:', event.data);
-      }
-    };
-
-    eventSource.onerror = () => {
-      console.error('SSE connection error; continuing with polling fallback');
-      eventSource.close();
-    };
-
-    pollInterval = setInterval(async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/audit/domain/status/${jobId}`);
-        if (response.ok) {
-          const data = await response.json();
-          handleProgressData(data);
-        }
-      } catch (err) {
-        console.error('Failed to poll domain audit status:', err);
-      }
-    }, 1500);
-
-    return () => {
-      stopTracking();
-    };
-  }, [jobId]);
-
-  const handlePageAudit = async (e: React.FormEvent) => {
-    e.preventDefault();
     setLoading(true);
-    setError(null);
-    setAuditResult(null);
-    setDomainResult(null);
-    setProgress(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/audit/page`, {
+      const response = await fetch('/api/social/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          title,
           url,
-          deep_crawl: false,
-          re_audit: false,
-          options: {
-            site_profile: siteProfile,
-            llm_prompt_eval: llmPromptEval,
-            external_aeo_validation: externalAeoValidation,
-            use_local_crawl: useLocalCrawl,
-            domain_intelligence_model: domainIntelligenceModel,
-            strategy_model: strategyModel,
-          },
+          text,
+          formats: selectedFormats,
         }),
       });
 
+      const data = await response.json() as GenerateResponse;
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error || 'Generation failed.');
       }
 
-      const data = await response.json();
-      if (data.result) {
-        setAuditResult(data.result);
-      } else {
-        setError("Audit completed but no result data was returned.");
+      setSource(data.source);
+      setOutputs(data.outputs);
+      setActiveFormat(data.outputs[0]?.format || selectedFormats[0]);
+      setStep('results');
+
+      if (data.failures?.length) {
+        setNotice(`Generated ${data.outputs.length} format(s). ${data.failures.length} format(s) need another try.`);
       }
     } catch (err: any) {
-      setError(`Failed to audit page: ${err.message}`);
-      console.error("Audit error:", err);
+      setError(err?.message || 'Generation failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDomainAudit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setAuditResult(null);
-    setDomainResult(null);
-    setProgress(null);
+  const updateOutput = (format: SocialFormat, content: string) => {
+    setOutputs((current) => current.map((output) => (
+      output.format === format ? { ...output, content } : output
+    )));
+  };
+
+  const submitForReview = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+
+    if (!source) {
+      setError('Generate content before submitting for review.');
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/audit/domain`, {
+      const response = await fetch('/api/social/review', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          domain, 
-          options: {
-            max_pages: maxPages,
-            site_profile: siteProfile,
-            llm_prompt_eval: llmPromptEval,
-            external_aeo_validation: externalAeoValidation,
-            use_local_crawl: useLocalCrawl,
-            domain_intelligence_model: domainIntelligenceModel,
-            strategy_model: strategyModel,
-          } 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientEmail,
+          source,
+          outputs,
         }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
 
       const data = await response.json();
-      setJobId(data.job_id);
-      setProgress({
-        status: 'discovering',
-        current_step: 'Starting discovery...',
-        percentage: 0,
-        pages_audited: 0,
-        urls_discovered: 0,
-        total_urls: maxPages,
-        message: 'Initializing domain audit'
-      });
-    } catch (err: any) {
-      setError(`Failed to start domain audit: ${err.message}`);
-      console.error("Domain audit error:", err);
-      setLoading(false);
-    }
-  };
-
-  const extractDomainName = (url: string): string => {
-    try {
-      const urlObj = new URL(url);
-      let hostname = urlObj.hostname;
-      
-      // Remove 'www.' prefix
-      hostname = hostname.replace(/^www\./, '');
-      
-      // Extract the main domain name (e.g., 'aprisio' from 'aprisio.com')
-      const parts = hostname.split('.');
-      if (parts.length >= 2) {
-        // For domain.tld, return 'domain'
-        // For subdomain.domain.tld, return 'domain'
-        return parts[parts.length - 2];
-      }
-      
-      return hostname;
-    } catch (e) {
-      // Fallback if URL parsing fails
-      return 'report';
-    }
-  };
-
-  const downloadPDF = async (result: AuditResult | DomainAuditResult, type: 'page' | 'domain') => {
-    try {
-      const response = await fetch(`${API_URL}/api/v1/audit/pdf`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audit_result: result,
-          audit_type: type,
-          detailed: detailedPDF
-        }),
-      });
-
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        throw new Error(data.error || 'Could not send review email.');
       }
 
-      // Extract domain name from the audited URL or domain
-      let auditedUrl: string;
-      if (type === 'page') {
-        // For single page audits, use the URL from state
-        auditedUrl = url;
-      } else {
-        // For domain audits, use the domain field
-        auditedUrl = (result as DomainAuditResult).domain;
-      }
-      
-      const domainName = extractDomainName(auditedUrl);
-      const filename = `aeo-report-${domainName}.pdf`;
-
-      // Create blob and download
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
+      setReviewOpen(false);
+      setRecipientEmail('');
+      setNotice('Review email sent successfully.');
     } catch (err: any) {
-      setError(`Failed to download PDF: ${err.message}`);
-      console.error('PDF download error:', err);
+      setError(err?.message || 'Could not send review email.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start p-8 bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full max-w-6xl bg-white shadow-2xl rounded-2xl p-8 mb-8">
-        <h1 className="text-5xl font-bold mb-2 text-center text-gray-900">
-          AEO/GEO Score Auditor
-        </h1>
-        <p className="text-center text-gray-600 mb-2">
-          Answer Engine Optimization Analysis Tool
-        </p>
-        <div className="text-center mb-8">
-          <a 
-            href="/scoring-guide.html" 
-            target="_blank"
-            className="text-blue-600 hover:text-blue-800 underline text-sm"
-          >
-            📊 View Complete Scoring Framework & Formulas →
-          </a>
+    <main className="min-h-screen bg-[#f8fafc] text-slate-950">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Agent-backed content studio
+            </p>
+            <h1 className="mt-2 font-display text-4xl font-semibold text-slate-950 sm:text-5xl">
+              Article to Social
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
+            <Sparkles className="h-4 w-4 text-slate-900" />
+            Real OpenAI generation + Resend review email
+          </div>
         </div>
+      </section>
 
-        {/* Audit Type Selector */}
-        <div className="flex justify-center mb-6 space-x-4">
-          <button
-            onClick={() => setAuditType('page')}
-            className={`px-6 py-2 rounded-lg font-medium transition-all ${
-              auditType === 'page'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Single Page
-          </button>
-          <button
-            onClick={() => setAuditType('domain')}
-            className={`px-6 py-2 rounded-lg font-medium transition-all ${
-              auditType === 'domain'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Entire Domain
-          </button>
-        </div>
+      <section className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
+        {step === 'compose' ? (
+          <form onSubmit={generate} className="grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+            <div className="space-y-5">
+              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-white">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold">Source article</h2>
+                    <p className="text-sm text-slate-500">Use a URL, paste the article, or provide both.</p>
+                  </div>
+                </div>
 
-        <ProfileSelector
-          value={siteProfile}
-          onChange={setSiteProfile}
-          disabled={loading}
-        />
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">Working title</span>
+                  <input
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Optional title for the review email"
+                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                  />
+                </label>
 
-        <ModelSelector
-          id="domain-intelligence-model"
-          title="Domain Intelligence Model"
-          description="Fast pre-crawl classification, crawl focus, and batched answerability checks."
-          value={domainIntelligenceModel}
-          options={analysisModels}
-          onChange={setDomainIntelligenceModel}
-          disabled={loading}
-        />
+                <label className="mt-5 block">
+                  <span className="text-sm font-medium text-slate-700">Article URL</span>
+                  <input
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                    placeholder="https://example.com/long-form-article"
+                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                  />
+                </label>
 
-        <ModelSelector
-          id="strategy-model"
-          title="Final Strategy Model"
-          description="Runs once after crawling to refine the business context and buyer-question strategy."
-          value={strategyModel}
-          options={analysisModels}
-          onChange={setStrategyModel}
-          disabled={loading}
-        />
+                <label className="mt-5 block">
+                  <span className="text-sm font-medium text-slate-700">Pasted article text</span>
+                  <textarea
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    placeholder="Paste the full long-form article here..."
+                    rows={16}
+                    className="mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                  />
+                </label>
+              </div>
+            </div>
 
-        <label className="mb-6 flex items-start gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-stone-700">
-          <input
-            type="checkbox"
-            checked={llmPromptEval}
-            onChange={(e) => setLlmPromptEval(e.target.checked)}
-            disabled={loading}
-            className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500"
-          />
-          <span>
-            <span className="block font-semibold text-stone-900">
-              LLM-check prompt answers
-            </span>
-            <span className="text-xs text-stone-500">
-              Uses the selected analysis model to judge whether retrieved site evidence truly answers each prompt.
-            </span>
-          </span>
-        </label>
+            <aside className="space-y-5">
+              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="text-xl font-semibold">Output formats</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Each checked format runs through its own skill.
+                </p>
 
-        <label className="mb-6 flex items-start gap-3 rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-stone-700">
-          <input
-            type="checkbox"
-            checked={externalAeoValidation}
-            onChange={(e) => setExternalAeoValidation(e.target.checked)}
-            disabled={loading}
-            className="mt-1 h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
-          />
-          <span>
-            <span className="block font-semibold text-stone-900">
-              Validate against external AEOs
-            </span>
-            <span className="text-xs text-stone-500">
-              Asks the generated questions to configured external engines and compares visibility with the local estimate.
-            </span>
-          </span>
-        </label>
+                <div className="mt-5 space-y-3">
+                  {FORMAT_DEFINITIONS.map((format) => (
+                    <label
+                      key={format.id}
+                      className="flex cursor-pointer gap-3 rounded-lg border border-slate-200 p-4 transition hover:border-slate-400"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedFormats.includes(format.id)}
+                        onChange={() => toggleFormat(format.id)}
+                        className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-900"
+                      />
+                      <span>
+                        <span className="flex items-center gap-2 font-semibold">
+                          <span
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-xs text-white"
+                            style={{ backgroundColor: format.accent }}
+                          >
+                            {format.shortLabel}
+                          </span>
+                          {format.label}
+                        </span>
+                        <span className="mt-2 block text-sm leading-5 text-slate-500">
+                          {format.description}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-        <label className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-stone-700">
-          <input
-            type="checkbox"
-            checked={useLocalCrawl}
-            onChange={(e) => setUseLocalCrawl(e.target.checked)}
-            disabled={loading}
-            className="mt-1 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"
-          />
-          <span>
-            <span className="block font-semibold text-stone-900">
-              Use local crawl only
-            </span>
-            <span className="text-xs text-stone-500">
-              Reuses saved crawl data from domains/crawls and skips downloading pages.
-            </span>
-          </span>
-        </label>
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
 
-        {/* Forms */}
-        {auditType === 'page' ? (
-          <form onSubmit={handlePageAudit} className="flex flex-col gap-4">
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Enter page URL or local file path (e.g., https://example.com or file:///path/to/file.html)"
-              className="p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 font-semibold shadow-lg"
-              disabled={loading}
-            >
-              {loading ? '🔍 Auditing Page...' : '🚀 Audit Page'}
-            </button>
+              {notice && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  {notice}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {loading ? 'Generating with agents...' : 'Generate'}
+              </button>
+            </aside>
           </form>
         ) : (
-          <form onSubmit={handleDomainAudit} className="flex flex-col gap-4">
-            <input
-              type="text"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              placeholder="Enter domain (e.g., example.com or https://example.com)"
-              className="p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-              disabled={loading}
-            />
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Max Pages (0 for unlimited)
-                </label>
-                <input
-                  type="number"
-                  value={maxPages}
-                  onChange={(e) => setMaxPages(parseInt(e.target.value) || 0)}
-                  min="0"
-                  max="1000"
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={loading}
-                />
+          <div className="space-y-6">
+            <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setStep('compose')}
+                  className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-950"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to source
+                </button>
+                <h2 className="text-2xl font-semibold">{source?.title || 'Generated social content'}</h2>
+                <p className="mt-1 max-w-3xl text-sm text-slate-500">
+                  Edit each generated format below, then submit the final version for email review.
+                </p>
               </div>
-            </div>
-            <button
-              type="submit"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 disabled:opacity-50 font-semibold shadow-lg"
-              disabled={loading}
-            >
-              {loading ? '🌐 Crawling Domain...' : `🌐 Audit Domain ${maxPages > 0 ? `(up to ${maxPages} pages)` : '(unlimited)'}`}
-            </button>
-          </form>
-        )}
-
-        {/* Progress Bar */}
-        {progress && (
-          <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl shadow-lg">
-            {/* Status Badge */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${progressStatus?.className}`}>
-                  {progressStatus?.label}
-                </div>
-                <h3 className="text-xl font-semibold text-gray-800">
-                  {progress.current_step}
-                </h3>
-              </div>
-              <span className="text-2xl font-bold text-blue-600">
-                {progress.percentage.toFixed(0)}%
-              </span>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="relative w-full bg-gray-200 rounded-full h-8 mb-4 shadow-inner">
-              <div
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full transition-all duration-500 ease-out shadow-md"
-                style={{ width: `${progress.percentage}%` }}
+              <button
+                type="button"
+                onClick={() => setReviewOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-bold text-white drop-shadow">
-                    {progress.percentage >= 10 ? `${progress.percentage.toFixed(1)}%` : ''}
-                  </span>
-                </div>
-              </div>
+                <Send className="h-4 w-4" />
+                Submit to Review
+              </button>
             </div>
 
-            {/* Detailed Info Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-3">
-              {progress.urls_discovered > 0 && (
-                <div className="bg-white rounded-lg p-3 shadow">
-                  <p className="text-xs text-gray-500 mb-1">URLs Discovered</p>
-                  <p className="text-2xl font-bold text-indigo-600">{progress.urls_discovered}</p>
-                </div>
-              )}
-              {progress.total_urls > 0 && (
-                <div className="bg-white rounded-lg p-3 shadow">
-                  <p className="text-xs text-gray-500 mb-1">Progress</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {progress.pages_audited}/{progress.total_urls}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Message */}
-            <div className="bg-white rounded-lg p-3 mb-2 shadow">
-              <p className="text-sm font-medium text-gray-700">
-                {progress.message}
-              </p>
-            </div>
-
-            {/* Current URL */}
-            {progress.current_url && (
-              <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
-                <p className="text-xs text-indigo-600 font-semibold mb-1">Currently Auditing:</p>
-                <p className="text-xs text-gray-700 truncate">{progress.current_url}</p>
+            {notice && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {notice}
               </div>
             )}
+
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+              <nav className="space-y-2">
+                {outputs.map((output) => {
+                  const definition = FORMAT_DEFINITIONS.find((format) => format.id === output.format);
+                  const isActive = activeOutput?.format === output.format;
+                  return (
+                    <button
+                      key={output.format}
+                      type="button"
+                      onClick={() => setActiveFormat(output.format)}
+                      className={`w-full rounded-lg border p-4 text-left transition ${
+                        isActive
+                          ? 'border-slate-950 bg-white shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-400'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 font-semibold">
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-xs text-white"
+                          style={{ backgroundColor: definition?.accent || '#111827' }}
+                        >
+                          {definition?.shortLabel || output.format}
+                        </span>
+                        {definition?.label || output.format}
+                      </span>
+                      <span className="mt-2 block text-sm text-slate-500">{output.title}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {activeOutput && (
+                <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-5 border-b border-slate-200 pb-5">
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {FORMAT_DEFINITIONS.find((format) => format.id === activeOutput.format)?.label}
+                    </p>
+                    <h3 className="mt-2 text-2xl font-semibold">{activeOutput.title}</h3>
+                    <p className="mt-2 text-sm text-slate-500">{activeOutput.summary}</p>
+                  </div>
+
+                  {activeOutput.details.length > 0 && (
+                    <div className="mb-5 grid gap-2 sm:grid-cols-2">
+                      {activeOutput.details.map((detail) => (
+                        <div key={detail} className="flex gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                          {detail}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700">Editable final content</span>
+                    <textarea
+                      value={activeOutput.content}
+                      onChange={(event) => updateOutput(activeOutput.format, event.target.value)}
+                      rows={22}
+                      className="mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white px-4 py-3 font-mono text-sm leading-6 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                    />
+                  </label>
+                </article>
+              )}
+            </div>
           </div>
         )}
+      </section>
 
-        {/* Error Display */}
-        {error && (
-          <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
-            <p className="font-bold">❌ Error:</p>
-            <p>{error}</p>
-          </div>
-        )}
+      {reviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-5">
+          <form onSubmit={submitForReview} className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-950 text-white">
+              <Mail className="h-5 w-5" />
+            </div>
+            <h2 className="mt-4 text-2xl font-semibold">Send for review</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              The recipient will receive the original source, format details, and your edited content.
+            </p>
 
-        {/* Single Page Results */}
-        {auditResult && (
-          <ReportBook
-            result={auditResult}
-            auditType="page"
-            sourceUrl={url}
-            detailedPDF={detailedPDF}
-            onDetailedPDFChange={setDetailedPDF}
-            onDownloadPDF={() => downloadPDF(auditResult, 'page')}
-          />
-        )}
+            <label className="mt-5 block">
+              <span className="text-sm font-medium text-slate-700">Recipient email</span>
+              <input
+                type="email"
+                value={recipientEmail}
+                onChange={(event) => setRecipientEmail(event.target.value)}
+                placeholder="reviewer@example.com"
+                required
+                className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              />
+            </label>
 
-        {/* Domain Results */}
-        {domainResult && (
-          <ReportBook
-            result={domainResult}
-            auditType="domain"
-            sourceUrl={domain}
-            detailedPDF={detailedPDF}
-            onDetailedPDFChange={setDetailedPDF}
-            onDownloadPDF={() => downloadPDF(domainResult, 'domain')}
-          />
-        )}
-      </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="flex-1 rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Send
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   );
 }

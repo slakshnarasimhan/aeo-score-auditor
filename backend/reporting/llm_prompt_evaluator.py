@@ -113,14 +113,21 @@ class LLMPromptEvaluator:
 
         return self.llm.generate_json(
             (
-                "You are a strict answerability evaluator. Evaluate every item "
-                "independently using only its supplied website evidence."
+                "You are an evidence-grounded answerability evaluator. Evaluate every "
+                "item independently using only its supplied website evidence. First "
+                "synthesize the best direct answer the evidence supports, then judge "
+                "coverage. Evidence may be spread across multiple snippets; do not "
+                "downgrade solely because the answer is assembled from several snippets. "
+                "Use partial or weak only when important answer details are absent, "
+                "ambiguous, or contradicted."
             ),
             (
                 f"Items:\n{json.dumps(items, default=str)}\n\n"
                 "Return JSON with an evaluations array. Each evaluation must contain "
                 "id, coverage (strong|partial|weak|missing), answerability_score "
-                "(0-100), answer, reasoning, gaps, recommended_fix, and evidence_used."
+                "(0-100), answer, reasoning, gaps, recommended_fix, and evidence_used. "
+                "The answer must cite only facts present in the supplied evidence. If "
+                "the evidence supports a qualified answer, state the qualification."
             ),
             temperature=0,
         )
@@ -168,16 +175,21 @@ Use only the evidence above. Do not use outside knowledge.
 
         return self.llm.generate_json(
             (
-                "You are a strict answerability evaluator for website audits. "
-                "Return only JSON. If the evidence is vague, generic, or does "
-                "not directly answer the prompt, lower the coverage."
+                "You are an evidence-grounded answerability evaluator for website audits. "
+                "Return only JSON. First synthesize the best direct answer supported by "
+                "the retrieved evidence, then judge coverage. Evidence may be spread "
+                "across multiple snippets; do not downgrade solely because the answer "
+                "requires combining snippets. If the evidence is vague, generic, "
+                "ambiguous, contradicted, or missing important details, lower the coverage."
             ),
             (
                 user_prompt
                 + "\nReturn JSON with keys: coverage "
                 "(strong|partial|weak|missing), answerability_score (0-100), "
                 "answer (string), reasoning (string), gaps (array of strings), "
-                "recommended_fix (string), evidence_used (array of evidence numbers)."
+                "recommended_fix (string), evidence_used (array of evidence numbers). "
+                "Use only facts in the evidence. If the evidence supports a qualified "
+                "answer, state the qualification."
             ),
             temperature=0,
         )
@@ -234,6 +246,8 @@ Use only the evidence above. Do not use outside knowledge.
         result["answerability_score"] = evaluation.get(
             "answerability_score", result.get("answerability_score")
         )
+        if evaluation.get("answer"):
+            result["answer"] = evaluation["answer"]
         if evaluation.get("reasoning"):
             result["gap"] = evaluation["reasoning"]
         if evaluation.get("recommended_fix"):

@@ -360,6 +360,8 @@ class DomainAuditOrchestrator:
         from reporting.domain_intelligence import (
             DomainIntelligencePreflight,
             DomainStrategySynthesizer,
+            load_domain_intelligence,
+            load_domain_strategy,
             prioritize_urls_with_intelligence,
         )
         
@@ -403,6 +405,8 @@ class DomainAuditOrchestrator:
                 )
             except Exception as e:
                 logger.warning(f"Domain intelligence preflight failed: {e}")
+        elif use_local_crawl:
+            domain_intelligence = load_domain_intelligence(domain_url)
         elif self.tracker and self.job_id:
             self.tracker.update(
                 self.job_id,
@@ -515,7 +519,11 @@ class DomainAuditOrchestrator:
             result for result in page_results
             if result.get("overall_score", 0) > 0
         ]
-        final_strategy = domain_intelligence
+        final_strategy = (
+            load_domain_strategy(domain_url)
+            if use_local_crawl
+            else {}
+        ) or domain_intelligence
         run_final_strategy = not (
             use_local_crawl
             and not self.options.get("run_strategy_for_local_crawl")

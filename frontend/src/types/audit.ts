@@ -88,6 +88,7 @@ export interface PromptGapResult {
   win_likelihood?: string;
   coverage: 'strong' | 'partial' | 'weak' | 'missing';
   answerability_score: number;
+  answer?: string;
   eligibility_score?: number;
   answer_completeness_score?: number;
   opportunity_score?: number;

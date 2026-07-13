@@ -16,6 +16,69 @@ STOP_WORDS = {
     "when", "where", "which", "who", "why", "with", "would",
 }
 
+CONTENT_PROMPT_BLOCKLIST = [
+    "ask for the charter",
+    "become a founding",
+    "click any other",
+    "common questions",
+    "explore the profit pool",
+    "frequently asked questions",
+    "keep reading",
+    "linkedin more about",
+    "please enter your phone number",
+    "questions about the",
+    "see live engagements",
+    "see the operating model",
+    "sound like your industry",
+    "talk to a principal",
+    "think your company is a fit",
+    "think your industry belongs",
+    "view the profit pool",
+    "where this sits",
+    "which vehicle fits",
+    "you’re the authority",
+    "you're the authority",
+]
+
+BUYER_INTENT_TERMS = {
+    "analytics", "automation", "automate", "benchmark", "benefit", "build",
+    "buy", "case", "choose", "compare", "compliance", "cost", "data",
+    "deploy", "different", "evaluate", "implementation", "integrate",
+    "integration", "model", "platform", "pricing", "proof", "provider",
+    "roi", "risk", "security", "service", "software", "solution",
+    "support", "tool", "vendor", "workflow",
+}
+
+QUERY_TERM_EXPANSIONS = {
+    "found": ["founder", "founders", "startup", "startups", "entrepreneur", "entrepreneurs", "applicant", "applicants"],
+    "founder": ["startup", "entrepreneur", "applicant"],
+    "eligible": ["eligibility", "eligible", "apply", "application", "applicant", "based", "operating"],
+    "countr": [
+        "country", "countries", "regional",
+        "global", "south", "asia", "gulf", "india", "sri", "lanka", "uk",
+        "philippines", "thailand", "vietnam", "indonesia",
+    ],
+    "outside": ["global", "international", "regional", "south", "asia", "gulf", "uk"],
+    "support": ["supports", "supporting", "supported", "accelerator", "accelerators", "program", "programs"],
+}
+
+COUNTRY_OR_REGION_TERMS = {
+    "all countries", "outside india", "global", "international", "south asia",
+    "gulf", "bangladesh", "bhutan", "india", "maldives", "nepal", "pakistan",
+    "sri lanka", "bahrain", "kuwait", "oman", "qatar", "saudi arabia",
+    "united arab emirates", "uae", "uk", "philippines", "thailand",
+    "vietnam", "indonesia",
+}
+
+ELIGIBILITY_TERMS = {
+    "eligible", "eligibility", "apply", "application", "applicant", "applications",
+}
+
+FOUNDER_TERMS = {
+    "founder", "founders", "startup", "startups", "entrepreneur",
+    "entrepreneurs", "participants", "ventures",
+}
+
 JOURNEY_STAGES = [
     "problem_recognition",
     "solution_discovery",
@@ -267,13 +330,22 @@ class PromptGapAnalyzer:
         prompts.extend(
             self._positioning_prompts(positioning or {}, topic, profile_type)
         )
-        prompts.extend(self._content_derived_prompts(pages or [], brand, profile_type))
+        prompts.extend(
+            self._content_derived_prompts(
+                pages or [],
+                brand,
+                profile_type,
+                topic,
+                site_context,
+            )
+        )
 
         for intent, questions in templates.items():
             for question in questions:
                 prompts.append({
                     "prompt": question.format(brand=brand, topic=topic),
                     "intent": intent,
+                    "source": "template",
                 })
 
         if profile_type != "general":
@@ -284,6 +356,7 @@ class PromptGapAnalyzer:
                     prompts.append({
                         "prompt": question.format(brand=brand, topic=topic),
                         "intent": intent,
+                        "source": "template",
                     })
 
         unique = self._deduplicate_prompts(prompts)
@@ -383,7 +456,12 @@ class PromptGapAnalyzer:
         def add(prompt: str, intent: str, scope: str = "local"):
             normalized = self._normalize_question(prompt)
             if normalized:
-                prompts.append({"prompt": normalized, "intent": intent, "market_scope": scope})
+                prompts.append({
+                    "prompt": normalized,
+                    "intent": intent,
+                    "market_scope": scope,
+                    "source": "positioning",
+                })
 
         if is_local_market and is_commerce and place and product:
             add(f"Where can I buy affordable {product} in {place}?", "transactional")
@@ -525,9 +603,12 @@ class PromptGapAnalyzer:
         pages: Sequence[Dict[str, Any]],
         brand: str,
         profile_type: str,
+        topic: str = "",
+        site_context: Dict[str, Any] | None = None,
     ) -> List[Dict[str, str]]:
         prompts: List[Dict[str, str]] = []
         brand_terms = self._keywords(brand)
+        domain_terms = self._domain_terms(pages, brand, topic, site_context or {})
 
         for page in pages[:30]:
             evidence = page.get("prompt_evidence") or {}
@@ -547,13 +628,21 @@ class PromptGapAnalyzer:
                 q_text = self._normalize_question(
                     question.get("question", "") if isinstance(question, dict) else str(question)
                 )
-                if q_text:
-                    prompts.append({"prompt": q_text, "intent": self._intent_for_prompt(q_text)})
+                if self._is_quality_content_prompt(q_text, brand, domain_terms, "content_question"):
+                    prompts.append({
+                        "prompt": q_text,
+                        "intent": self._intent_for_prompt(q_text),
+                        "source": "content_question",
+                    })
 
             for text in [title] + headings:
                 q_text = self._question_from_text(text)
-                if q_text:
-                    prompts.append({"prompt": q_text, "intent": self._intent_for_prompt(q_text)})
+                if self._is_quality_content_prompt(q_text, brand, domain_terms, "heading"):
+                    prompts.append({
+                        "prompt": q_text,
+                        "intent": self._intent_for_prompt(q_text),
+                        "source": "heading",
+                    })
 
             if profile_type == "ecommerce":
                 prompts.extend(self._ecommerce_prompts_from_page(title, source_text))
@@ -570,7 +659,7 @@ class PromptGapAnalyzer:
         def add(prompt: str, intent: str):
             normalized = self._normalize_question(prompt)
             if normalized:
-                prompts.append({"prompt": normalized, "intent": intent})
+                prompts.append({"prompt": normalized, "intent": intent, "source": "template"})
 
         if product and "review" in title_l:
             add(f"Is {product} worth buying?", "feature")
@@ -591,6 +680,129 @@ class PromptGapAnalyzer:
             add(f"Which {category} offers the best value?", "comparison")
 
         return prompts
+
+    def _domain_terms(
+        self,
+        pages: Sequence[Dict[str, Any]],
+        brand: str,
+        topic: str,
+        site_context: Dict[str, Any],
+    ) -> set[str]:
+        terms = set()
+        context_keys = [
+            "business_type",
+            "entity_type",
+            "prompt_subject",
+            "offers",
+            "products",
+            "audience",
+            "value_props",
+            "target_audiences",
+        ]
+        for value in [brand, topic, *[site_context.get(key) for key in context_keys]]:
+            terms.update(self._terms_from_value(value))
+
+        frequencies: Dict[str, int] = {}
+        for page in pages[:20]:
+            evidence = page.get("prompt_evidence") or {}
+            source = " ".join([
+                str(evidence.get("title", "")),
+                str(evidence.get("meta_description", "")),
+                " ".join(str(item) for item in evidence.get("headings", [])[:10]),
+            ])
+            for term in self._keywords(source):
+                if len(term) >= 4:
+                    frequencies[term] = frequencies.get(term, 0) + 1
+        for term, _ in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)[:24]:
+            terms.add(term)
+
+        generic_terms = {
+            "about", "authority", "book", "company", "contact", "founding",
+            "frequently", "industry", "member", "more", "pool", "question",
+            "questions", "vertical", "vehicle",
+        }
+        return {term for term in terms if len(term) >= 4 and term not in generic_terms}
+
+    def _terms_from_value(self, value: Any) -> set[str]:
+        if value is None:
+            return set()
+        if isinstance(value, str):
+            return self._keywords(value)
+        if isinstance(value, list):
+            terms = set()
+            for item in value:
+                terms.update(self._terms_from_value(item))
+            return terms
+        if isinstance(value, dict):
+            terms = set()
+            for item in value.values():
+                terms.update(self._terms_from_value(item))
+            return terms
+        return self._keywords(str(value))
+
+    def _is_quality_content_prompt(
+        self,
+        prompt: str,
+        brand: str,
+        domain_terms: set[str],
+        source: str,
+    ) -> bool:
+        prompt = self._clean_text(prompt)
+        if not prompt:
+            return False
+        prompt_l = prompt.lower()
+        if any(phrase in prompt_l for phrase in CONTENT_PROMPT_BLOCKLIST):
+            return False
+        if self._looks_like_concatenated_fragment(prompt):
+            return False
+        if self._is_vague_or_cta_question(prompt_l):
+            return False
+        if prompt_l.startswith(('"', "'", "“", "”")):
+            return False
+
+        terms = self._keywords(prompt)
+        domain_overlap = terms & domain_terms
+        buyer_overlap = terms & BUYER_INTENT_TERMS
+        brand_present = bool(brand and brand.lower() in prompt_l)
+
+        if source == "heading" and not domain_overlap and not brand_present:
+            return False
+        if not domain_overlap and not brand_present and len(buyer_overlap) < 2:
+            return False
+        if len(terms) < 3:
+            return False
+        return True
+
+    def _looks_like_concatenated_fragment(self, prompt: str) -> bool:
+        words = prompt.split()
+        if len(words) > 18:
+            return True
+        title_case_runs = 0
+        for word in words:
+            cleaned = word.strip("?:,;()")
+            if len(cleaned) > 2 and cleaned[:1].isupper() and cleaned[1:].islower():
+                title_case_runs += 1
+        return title_case_runs >= 6 and "?" in prompt
+
+    def _is_vague_or_cta_question(self, prompt_l: str) -> bool:
+        vague_patterns = [
+            r"^is this\b",
+            r"^sound like\b",
+            r"^think your\b",
+            r"^view\b",
+            r"^see\b",
+            r"^which vehicle\b",
+            r"^where we operate\b",
+            r"^when do i get paid\b",
+            r"^what happens if i want to leave\b",
+            r"^how much time does this actually take\b",
+            r"^can my competitors join\b",
+        ]
+        if any(re.search(pattern, prompt_l) for pattern in vague_patterns):
+            return True
+        vague_terms = {"this", "that", "it", "vehicle", "industry", "book"}
+        terms = self._keywords(prompt_l)
+        return bool(terms) and len(terms - vague_terms) <= 1
 
     def _question_from_text(self, text: str) -> str:
         text = self._clean_text(text)
@@ -627,7 +839,8 @@ class PromptGapAnalyzer:
             return ""
         if "?" in text:
             text = text.split("?")[0] + "?"
-        text = re.sub(r"\s+", " ", text).strip(" -:|")
+        text = re.sub(r"\s+", " ", text).strip(" -:|.")
+        text = re.sub(r"\.+\?$", "?", text)
         if len(text) < 12 or len(text) > 160:
             return ""
         if not text.endswith("?"):
@@ -692,25 +905,35 @@ class PromptGapAnalyzer:
     def _score_prompt(self, prompt_def: Dict[str, str], chunks: List[Dict[str, Any]], brand: str) -> Dict[str, Any]:
         prompt = prompt_def["prompt"]
         prompt_terms = self._keywords(prompt)
+        query_terms = self._expanded_query_terms(prompt, prompt_terms)
         scored: List[Tuple[float, Dict[str, Any]]] = []
+        brand_l = brand.lower()
+        is_branded_prompt = brand_l in prompt.lower()
 
         for chunk in chunks:
             chunk_terms = set(chunk["terms"])
-            overlap = len(prompt_terms & chunk_terms)
-            phrase_bonus = sum(1 for term in prompt_terms if term in chunk["text_l"])
-            brand_bonus = 1.5 if brand.lower() in chunk["text_l"] else 0
-            structure_bonus = 1.0 if chunk["type"] in {"heading", "faq", "schema", "answer"} else 0
-            score = overlap * 3 + phrase_bonus + brand_bonus + structure_bonus
+            overlap = len(query_terms & chunk_terms)
+            phrase_bonus = sum(1 for term in query_terms if term in chunk["text_l"])
+            body_l = chunk["text_l"][80:] if chunk["type"] == "section" else chunk["text_l"]
+            brand_bonus = 1.5 if brand_l in body_l else 0
+            structure_bonus = 1.0 if chunk["type"] in {"heading", "faq", "schema", "answer", "section"} else 0
+            facet_bonus = self._facet_bonus(prompt, chunk)
+            score = overlap * 3 + phrase_bonus + brand_bonus + structure_bonus + facet_bonus
+            if is_branded_prompt and brand_l not in chunk["text_l"]:
+                score -= 8
+            if is_branded_prompt and chunk["type"] == "section" and brand_l not in body_l:
+                score -= 20
             if score > 0:
                 scored.append((score, chunk))
 
         scored.sort(key=lambda x: x[0], reverse=True)
+        top_scored = self._top_scored_by_url(scored, limit=3)
         evidence = [
-            self._format_evidence(score, chunk, prompt_terms)
-            for score, chunk in scored[:3]
+            self._format_evidence(score, chunk, query_terms)
+            for score, chunk in top_scored
         ]
         best_score = scored[0][0] if scored else 0
-        coverage, answerability = self._coverage(best_score, evidence, prompt_terms)
+        coverage, answerability = self._coverage(best_score, evidence, query_terms)
         stage = prompt_def.get("journey_stage") or self._fallback_stage(
             prompt_def["intent"],
             prompt,
@@ -718,7 +941,7 @@ class PromptGapAnalyzer:
         )
         eligibility = self._eligibility_score(
             evidence,
-            prompt_terms,
+            query_terms,
             stage,
         )
         opportunity = self._opportunity_score(
@@ -756,6 +979,28 @@ class PromptGapAnalyzer:
             ),
         }
 
+    def _top_scored_by_url(
+        self,
+        scored: List[Tuple[float, Dict[str, Any]]],
+        limit: int,
+    ) -> List[Tuple[float, Dict[str, Any]]]:
+        selected: List[Tuple[float, Dict[str, Any]]] = []
+        seen_urls: set[str] = set()
+        for score, chunk in scored:
+            url = chunk.get("url", "")
+            if url in seen_urls:
+                continue
+            selected.append((score, chunk))
+            seen_urls.add(url)
+            if len(selected) >= limit:
+                return selected
+        for score, chunk in scored:
+            if len(selected) >= limit:
+                break
+            if (score, chunk) not in selected:
+                selected.append((score, chunk))
+        return selected
+
     def _fallback_stage(self, intent: str, prompt: str, brand: str) -> str:
         prompt_l = prompt.lower()
         if brand.lower() in prompt_l:
@@ -784,7 +1029,7 @@ class PromptGapAnalyzer:
         ratio = len(matched & prompt_terms) / max(len(prompt_terms), 1)
         breadth_bonus = min(18, len(evidence) * 6)
         structure_bonus = 8 if any(
-            item.get("type") in {"heading", "faq", "schema", "answer"}
+            item.get("type") in {"heading", "faq", "schema", "answer", "section"}
             for item in evidence[:3]
         ) else 0
         branded_bonus = 8 if stage in {"branded_validation", "implementation"} else 0
@@ -802,6 +1047,39 @@ class PromptGapAnalyzer:
         return round(
             demand_weight * ((eligibility_gap * 0.7) + (completeness_gap * 0.3))
         )
+
+    def _expanded_query_terms(self, prompt: str, prompt_terms: set[str]) -> set[str]:
+        expanded = set(prompt_terms)
+        prompt_l = prompt.lower()
+        for term in list(prompt_terms):
+            for value in QUERY_TERM_EXPANSIONS.get(term, []):
+                expanded.update(self._keywords(value))
+
+        if any(term in prompt_l for term in ["eligible", "eligibility", "countries", "outside of india"]):
+            for value in COUNTRY_OR_REGION_TERMS | ELIGIBILITY_TERMS | FOUNDER_TERMS:
+                expanded.update(self._keywords(value))
+        return expanded
+
+    def _facet_bonus(self, prompt: str, chunk: Dict[str, Any]) -> float:
+        prompt_l = prompt.lower()
+        chunk_l = chunk.get("text_l", "")
+        bonus = 0.0
+
+        is_geo_eligibility = (
+            any(term in prompt_l for term in ["eligible", "eligibility", "countries", "outside of india"])
+            and any(term in prompt_l for term in ["founder", "startup", "support"])
+        )
+        if is_geo_eligibility:
+            if any(term in chunk_l for term in ELIGIBILITY_TERMS):
+                bonus += 5
+            if any(term in chunk_l for term in FOUNDER_TERMS):
+                bonus += 4
+            country_hits = sum(1 for term in COUNTRY_OR_REGION_TERMS if term in chunk_l)
+            bonus += min(8, country_hits * 2)
+            if "outside india" in chunk_l or "outside of india" in chunk_l:
+                bonus += 5
+
+        return bonus
 
     def _rank_results(
         self,
@@ -826,10 +1104,17 @@ class PromptGapAnalyzer:
             return "missing", 0
 
         top = evidence[0]
-        matched_terms = set(top.get("matched_terms", []))
-        match_ratio = len(matched_terms & prompt_terms) / max(len(prompt_terms), 1)
-        direct_bonus = 10 if top["type"] in {"faq", "heading", "answer", "schema"} else 0
-        answerability = min(100, int((match_ratio * 70) + min(best_score, 20) + direct_bonus))
+        top_terms = set(top.get("matched_terms", []))
+        aggregate_terms: set[str] = set()
+        for item in evidence[:3]:
+            aggregate_terms.update(item.get("matched_terms", []))
+        top_ratio = len(top_terms & prompt_terms) / max(len(prompt_terms), 1)
+        aggregate_ratio = len(aggregate_terms & prompt_terms) / max(len(prompt_terms), 1)
+        direct_bonus = 10 if top["type"] in {"faq", "heading", "answer", "schema", "section"} else 0
+        answerability = min(
+            100,
+            int((top_ratio * 45) + (aggregate_ratio * 30) + min(best_score, 20) + direct_bonus),
+        )
 
         if answerability >= 72:
             return "strong", answerability
@@ -862,18 +1147,36 @@ class PromptGapAnalyzer:
                 chunks.append(self._chunk(url, paragraph, "paragraph"))
             for item in evidence.get("schema_types", [])[:8]:
                 chunks.append(self._chunk(url, f"Schema type: {item}", "schema"))
+            section_text = self._page_section_text(evidence)
+            if section_text:
+                chunks.append(self._chunk(url, section_text, "section", max_len=1200))
 
         return [chunk for chunk in chunks if chunk["terms"]]
 
-    def _chunk(self, url: str, text: str, chunk_type: str) -> Dict[str, Any]:
+    def _chunk(self, url: str, text: str, chunk_type: str, max_len: int = 360) -> Dict[str, Any]:
         clean = self._clean_text(text)
         return {
             "url": url,
-            "text": clean[:360],
+            "text": clean[:max_len],
             "text_l": clean.lower(),
             "type": chunk_type,
             "terms": self._keywords(clean),
         }
+
+    def _page_section_text(self, evidence: Dict[str, Any]) -> str:
+        pieces: List[str] = []
+        for key in ("title", "meta_description"):
+            value = evidence.get(key)
+            if value:
+                pieces.append(str(value))
+        pieces.extend(str(item) for item in evidence.get("headings", [])[:10] if item)
+        for question in evidence.get("questions", [])[:6]:
+            text = question.get("question", "") if isinstance(question, dict) else str(question)
+            answer = question.get("answer", "") if isinstance(question, dict) else ""
+            if text or answer:
+                pieces.append(f"{text} {answer}".strip())
+        pieces.extend(str(item) for item in evidence.get("paragraphs", [])[:8] if item)
+        return self._clean_text(" ".join(pieces))
 
     def _format_evidence(
         self,

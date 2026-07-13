@@ -1,345 +1,63 @@
 {
   "enabled": true,
   "available": true,
-  "validated_at": "2026-06-27T13:00:30.388670",
+  "validated_at": "2026-07-02T17:21:59.434094",
   "domain": "https://moative.com",
   "brand": "Moative",
   "site_url": "https://moative.com",
   "providers": [
     {
-      "name": "openai",
-      "label": "ChatGPT / OpenAI web search",
-      "model": "gpt-4o-mini",
+      "name": "ollama",
+      "label": "Ollama answer-engine simulation",
+      "model": "glm-5.2",
       "available": true
-    },
-    {
-      "name": "gemini",
-      "label": "Gemini with Google Search grounding",
-      "model": "gemini-2.5-flash",
-      "available": false
-    },
-    {
-      "name": "grok",
-      "label": "Grok with xAI web search",
-      "model": "grok-4.3",
-      "available": false
     }
   ],
   "summary": {
-    "questions_tested": 12,
+    "questions_tested": 1,
     "providers_tested": 1,
-    "external_visibility_score": 0.0,
-    "brand_presence_rate": 0.0,
-    "official_citation_rate": 0.0,
-    "internal_external_alignment_score": 0.0,
+    "external_visibility_score": 100.0,
+    "brand_presence_rate": 100.0,
+    "official_citation_rate": 100.0,
+    "internal_external_alignment_score": 67.0,
     "stage_counts": {
-      "solution_discovery": {
-        "total": 12,
-        "external_visibility_score": 0.0,
-        "brand_presence_rate": 0.0
+      "problem_recognition": {
+        "total": 1,
+        "external_visibility_score": 100.0,
+        "brand_presence_rate": 100.0
       }
     }
   },
   "questions": [
     {
-      "prompt": "Product strategy gains trade-off analysis\u2014if you exit a low-margin class, what happens to portfolio diversification?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
+      "prompt": "How do mid-market B2B companies protect margins when AI commoditizes administrative work?",
+      "journey_stage": "problem_recognition",
+      "journey_label": "Problem Recognition",
       "intent": "discovery",
-      "internal_eligibility_score": 94,
-      "internal_answer_completeness_score": 90,
+      "internal_eligibility_score": 67,
+      "internal_answer_completeness_score": 92,
       "providers": [
         {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
+          "provider": "ollama",
+          "model": "glm-5.2",
+          "available": true,
+          "answer": "Mid-market B2B companies can protect margins when AI commoditizes administrative work through several strategies. First, they can shift focus from competing on administrative efficiency to differentiating through deep industry expertise, proprietary data, and specialized workflows that are difficult to replicate. Second, rather than simply purchasing AI tools that competitors can also access, some companies pursue equity-based AI joint ventures or co-ownership models\u2014approaches like those offered by Moative\u2014where they share in the upside of AI assets rather than paying recurring licensing fees that erode margins over time. Third, companies can reinvest savings from automated administrative tasks into higher-value activities such as relationship building, custom solution design, and vertical-specific product development. Fourth, building proprietary AI workflows on top of commoditized foundational tools creates defensible value layers that competitors cannot easily copy. Finally, mid-market firms can consolidate fragmented vendor relationships and negotiate from a stronger position by leveraging AI to handle procurement and vendor management internally. The key insight is that when administrative work becomes commoditized, margin protection comes from owning or co-owning the AI assets themselves and redirecting human capital toward relationship-driven, context-heavy work that AI cannot commoditize.",
+          "citations": [
+            {
+              "url": "https://moative.com",
+              "title": "Moative \u2014 Equity-Based AI Joint Ventures for Mid-Market B2B"
+            }
+          ],
+          "visibility_score": 100,
+          "brand_mentioned": true,
+          "official_site_cited": true,
+          "citation_count": 1
         }
       ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "Become a founding Guild member Ask for the Charter Frequently asked questions Do I need any technical skills?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 94,
-      "internal_answer_completeness_score": 94,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "Where we operate.?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 86,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "Is this an investment?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 86,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "Where this sits in the $84B pool?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 90,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "You\u2019re the authority, not a line item One founding member per vertical Sound like your industry?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 90,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "When do I get paid?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 89,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "Which vehicle fits?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 89,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "Is the Foundry for you?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 90,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "What happens if I want to leave?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 93,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "How AI in healthcare reshapes margin?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 93,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
-    },
-    {
-      "prompt": "Sound like your industry?",
-      "journey_stage": "solution_discovery",
-      "journey_label": "Solution Discovery",
-      "intent": "discovery",
-      "internal_eligibility_score": 100,
-      "internal_answer_completeness_score": 97,
-      "providers": [
-        {
-          "provider": "openai",
-          "model": "gpt-4o-mini",
-          "available": false,
-          "error": "HTTP 429: {\n  \"error\": {\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"insuffici",
-          "answer": "",
-          "citations": [],
-          "visibility_score": 0,
-          "brand_mentioned": false,
-          "official_site_cited": false
-        }
-      ],
-      "external_visibility_score": 0,
-      "brand_presence_rate": 0,
-      "official_citation_rate": 0,
-      "internal_external_alignment_score": 0
+      "external_visibility_score": 100.0,
+      "brand_presence_rate": 100.0,
+      "official_citation_rate": 100.0,
+      "internal_external_alignment_score": 67.0
     }
   ],
   "artifact_path": ""
